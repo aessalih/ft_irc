@@ -1,13 +1,13 @@
-SRC= main.cpp Server.cpp Client.cpp
+SRC= main.cpp Server.cpp Client.cpp Channel.cpp
 
 CC=c++
-FLAGS= -Wall -Wextra -Werror -std=c++98 -fsanitize=address -g
+FLAGS=  -std=c++98  -fsanitize=address -g #-Wall -Wextra -Werror 
 
 O_SRC=$(SRC:.cpp=.o)
 
 NAME=ircserv
 
-%.o: %.cpp Server.hpp Client.hpp
+%.o: %.cpp Server.hpp Client.hpp Channel.hpp
 	$(CC) $(FLAGS) -c $< -o $@
 
 all: $(NAME)

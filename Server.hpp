@@ -13,8 +13,10 @@
 # include <fcntl.h>
 # include <csignal>
 # include <sys/socket.h>
-# include <bits/stdc++.h>
+# include <vector>
+# include <sstream>
 # include "Client.hpp"
+# include "Channel.hpp"
 
 class Server {
 	private:
@@ -27,6 +29,7 @@ class Server {
 		struct pollfd	server_sockfd;
 		char	buffer[1024];
 		std::string	password;
+		std::vector<Channel> channels;
 		// fctnl();
 		// poll();
 		// 10 server
@@ -56,5 +59,7 @@ class Server {
 		int	check_password(char *buffer, int fd);
 		int	check_names(std::vector<Client> &clients, size_t i, char *buffer, int fd);
 };
+std::vector<std::string> split(const std::string &s, char delimiter);
 
 #endif
+

@@ -1,9 +1,11 @@
 #include "Server.hpp"
+#include <sstream>
+
 // canonical form and parameterize constructor definition
 Server::Server() {
 	this->opt = 1;
 	this->addrlen = sizeof(address);
-	buffer[1024] = 0;
+	memset(buffer, 0, 1024);
 	this->port = 8080;
 	if (this->port == -1)
 		exit (EXIT_FAILURE);
@@ -13,7 +15,7 @@ Server::Server() {
 Server::Server(char **av) {
 	this->opt = 1;
 	this->addrlen = sizeof(address);
-	buffer[1024] = 0;
+	memset(buffer, 0, 1024);
 	this->port = parse_port(av[1]);
 	if (this->port == -1)
 		exit (EXIT_FAILURE);
@@ -33,6 +35,7 @@ Server::~Server() {
 	close(sockfd);
 	close(accept_fd);
 }
+
 // Methods definition
 int	Server::init() {
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -47,10 +50,6 @@ int	Server::init() {
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons(this->port);
-	// if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1) {
-	// 	std::cerr << "FCNTL FUNCTION FAILS\n";
-	// 	return -1;
-	// }
 	if (bind(sockfd, (struct sockaddr*)&address, addrlen) == -1) {
 		std::cerr << "BIND FUNCTION FAILS\n";
 		return -1;
@@ -103,7 +102,6 @@ int	Server::handleNewClients()
 		std::cerr << "ERROR ACCEPTING CONNECTION\n";
 		return -1;
 	}
-	// fcntl(accept_fd, F_SETFL, O_NONBLOCK);
 	newFd.fd = accept_fd;
 	newFd.events = POLLIN;
 	newFd.revents = 0;
@@ -127,26 +125,213 @@ void Server::handleClientMessage(size_t i) {
 		fds.erase(fds.begin() + i);
 		return ;
 	}
-	// std::cout << clients[i-1].getIsRegistered() << std::endl;
-	if (clients[i - 1].getIsRegistered() == false) {
-		if (clients[i - 1].getHavePass() == false) {
-			if (check_password(buffer, client_fd)) {
-				clients[i - 1].setHavePass(true);
-				return ;
-			}
-			return ;
+
+	// Check if client is registered
+	// if (clients[i - 1].getIsRegistered() == false) {
+	// 	if (clients[i - 1].getHavePass() == false) {
+	// 		if (check_password(buffer, client_fd)) {
+	// 			clients[i - 1].setHavePass(true);
+	// 			return ;
+	// 		}
+	// 		return ;
+	// 	}
+	// 	if (!check_names(clients, i - 1, buffer, client_fd))
+	// 		return ;
+	// 	clients[i - 1].setIsRegestered(true);
+	// 	send(client_fd, "You have to complete your registration\n", 40, 0);
+	// 	return ;
+	// }
+
+	// Parse the message
+	std::string msg(buffer);
+	std::vector<std::string> tokens = split(msg, ' ');
+	
+	std::string cmd = tokens[0];
+	if (!cmd.empty() && cmd[cmd.size() - 1] == '\n') {
+		cmd.erase(cmd.size() - 1);
+	}	
+
+	if (cmd == "JOIN") {
+		if (tokens.size() < 2) {
+			std::string error_msg = "461 JOIN :Not enough parameters\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
 		}
-		if (!check_names(clients, i - 1, buffer, client_fd))
-			return ;
-		clients[i - 1].setIsRegestered(true);
-		send(client_fd, "You have to complete your registration\n", \
-			40, 0);
-		return ;
+
+		// Parse channel name and key
+		std::string channel_name = tokens[1];
+		if (!channel_name.empty() && channel_name[channel_name.size() - 1] == '\n') {
+			channel_name.erase(channel_name.size() - 1);
+		}	
+		std::cout << "[" << channel_name << "]" <<std::endl;	
+		std::string key = "";
+		if (tokens.size() >= 3)
+			key = tokens[2];
+
+		// Validate channel name
+		if (channel_name[0] != '#') {
+			std::string error_msg = "403 " + channel_name + " :No such channel\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		// Check if channel exists
+		bool channel_exists = false;
+		Channel *target_channel = NULL;
+		
+		for (size_t j = 0; j < channels.size(); j++) {
+			if (channels[j].get_name() == channel_name) {
+				channel_exists = true;
+				target_channel = &channels[j];
+				break;
+			}
+		}
+
+		if (!channel_exists) {
+			// Create new channel
+			int channel_key = -1;
+			if (!key.empty()) {
+				std::istringstream iss(key);
+				iss >> channel_key;
+			}
+			Channel new_channel(channel_name, channel_key);
+			channels.push_back(new_channel);
+			target_channel = &channels.back();
+		}
+
+		// Add client to channel
+		if (target_channel) {
+			// Check if channel need a key
+			int channel_key = target_channel->get_key();
+			int provided_key = -1;
+			if (!key.empty()) {
+				std::istringstream iss(key);
+				iss >> provided_key;
+			}
+			
+			if (channel_key != -1 && (key.empty() || channel_key != provided_key)) {
+				std::string error_msg = "475 " + channel_name + " :Cannot join channel (+k)\n";
+				send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+				return;
+			}
+
+			// Add client to channel
+			target_channel->add_client(clients[i - 1]);
+			
+			// Send JOIN message to all clients in channel
+			std::string join_msg = ":" + clients[i - 1].getNickname() + " JOIN " + channel_name + "\n";
+			const std::vector<Client> &channel_clients = target_channel->get_clients();
+			for (size_t j = 0; j < channel_clients.size(); j++) {
+				send(channel_clients[j].getFd(), join_msg.c_str(), join_msg.length(), 0);
+			}
+			
+			// Send RPL_TOPIC if exists
+			if (!target_channel->get_topic().empty()) {
+				std::string topic_msg = "332 " + clients[i - 1].getNickname() + " " + channel_name + " :" + target_channel->get_topic() + "\n";
+				send(client_fd, topic_msg.c_str(), topic_msg.length(), 0);
+			}
+
+			// Send RPL_NAMREPLY
+			std::string names_msg = "353 " + clients[i - 1].getNickname() + " = " + channel_name + " :";
+			const std::vector<Client> &clients_list = target_channel->get_clients();
+			for (size_t j = 0; j < clients_list.size(); j++) {
+				if (j != 0)
+					names_msg += " ";
+				names_msg += clients_list[j].getNickname();
+			}
+			names_msg += "\n";
+			send(client_fd, names_msg.c_str(), names_msg.length(), 0);
+
+			// Send RPL_ENDOFNAMES
+			std::string end_names_msg = "366 " + clients[i - 1].getNickname() + " " + channel_name + " :End of /NAMES list\n";
+			send(client_fd, end_names_msg.c_str(), end_names_msg.length(), 0);
+		}
 	}
-	// std::cout << "Received from client " << client_fd << ": " << buffer;
-	/*
-		start from here
-	*/
+	else if (tokens[0] == "PRIVMSG") {
+		// std::cout << tokens[0] << "\n";
+		// std::cout << tokens[1] << "\n";
+		// std::cout << tokens[2] << "\n";
+		if (tokens.size() < 3) {
+			std::string error_msg = "461 PRIVMSG :Not enough parameters\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		std::string target = tokens[1];
+		std::string message;
+
+		// Combine all remaining tokens into the message
+		for (size_t j = 2; j < tokens.size(); j++) {
+			if (j > 2)
+				message += " ";
+			message += tokens[j];
+		}
+
+		//Remove quotes if present
+		if (message[0] == '"' && message[message.length() - 1] == '"') {
+			message = message.substr(1, message.length() - 2);
+		}
+
+		// Check if target is a channel
+		if (target[0] == '#') {
+			// Find the channel
+			Channel *target_channel = NULL;
+			for (size_t j = 0; j < channels.size(); j++) {
+				std::cout << channels[j].get_name() << "choof \n";
+				if (channels[j].get_name() == target) {
+					target_channel = &channels[j];
+					break;
+				}
+			}
+
+			if (!target_channel) {
+				std::string error_msg = "403 " + target + " :No such channel\n";
+				send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+				return;
+			}
+
+			// Check if sender is in the channel
+			bool is_in_channel = false;
+			const std::vector<Client> &channel_clients = target_channel->get_clients();
+			for (size_t j = 0; j < channel_clients.size(); j++) {
+				if (channel_clients[j] == clients[i - 1]) {
+					is_in_channel = true;
+					break;
+				}
+			}
+
+			if (!is_in_channel) {
+				std::string error_msg = "404 " + target + " :Cannot send to channel\n";
+				send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+				return;
+			}
+
+			// Send message to all clients in channel
+			std::string privmsg = ":" + clients[i - 1].getNickname() + " PRIVMSG " + target + " :" + message + "\n";
+			for (size_t j = 0; j < channel_clients.size(); j++) {
+				if (!(channel_clients[j] == clients[i - 1])) { // Don't send to self
+					send(channel_clients[j].getFd(), privmsg.c_str(), privmsg.length(), 0);
+				}
+			}
+		}
+		else {
+			// Target is a user
+			bool user_found = false;
+			for (size_t j = 0; j < clients.size(); j++) {
+				if (clients[j].getNickname() == target) {
+					user_found = true;
+					std::string privmsg = ":" + clients[i - 1].getNickname() + " PRIVMSG " + target + " :" + message + "\n";
+					send(clients[j].getFd(), privmsg.c_str(), privmsg.length(), 0);
+					break;
+				}
+			}
+
+			if (!user_found) {
+				std::string error_msg = "401 " + target + " :No such nick\n";
+				send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			}
+		}
+	}
 }
 
 int	Server::check_password(char *buffer, int fd) {
@@ -157,7 +342,7 @@ int	Server::check_password(char *buffer, int fd) {
 		return 0;
 	pass = strtok(NULL, " ");
 	password = pass;
-	password.erase(password.find_last_not_of("\r\n") + 1);
+	password.erase(password.find_last_not_of("\n") + 1);
 	if (password == this->password)
 		return 1;
 	send(fd, "Enter server password: pass <password>\n", 40, 0);
@@ -169,11 +354,11 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 	size_t	j = 0;
 
 	std::string name = token;
-	name.erase(name.find_last_not_of("\r\n") + 1);
+	name.erase(name.find_last_not_of("\n") + 1);
 	if (name == "nick") {
 		token = strtok(NULL, " ");
 		name = token;
-		name.erase(name.find_last_not_of("\r\n") + 1);
+		name.erase(name.find_last_not_of("\n") + 1);
 		if (name.length() < 4 && name.length() > 16) {
 			send(fd, "You have to enter the right nickname(4-16 character)\n", 54, 0);
 			return 0;
@@ -185,9 +370,7 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 			}
 			j++;
 		}
-		// std::cout << name << "\n";
 		clients[i].setNickname(name);
-		// std::cout << clients[i].getNickname() << "\n";
 		if (!clients[i].getUsername().empty())
 			return 1;
 		return 0;
@@ -195,7 +378,7 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 	else if (name == "user") {
 		token = strtok(NULL, " ");
 		name = token;
-		name.erase(name.find_last_not_of("\r\n") + 1);
+		name.erase(name.find_last_not_of("\n") + 1);
 		if (name.length() < 4 && name.length() > 16) {
 			send(fd, "You have to enter the right username(4-16 character)\n", 54, 0);
 			return 0;
@@ -205,7 +388,6 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 			return 1;
 		return 0;
 	}
-	std::cout << clients[i].getHavePass() << " | " << clients[i].getNickname() << " | " << clients[i].getUsername() << std::endl;
 	if (!clients[i].getNickname().empty() && !clients[i].getUsername().empty())
 		return (1);
 	return (0);
@@ -219,4 +401,14 @@ int	Server::parse_port(char *av) {
 			return -1;
 	}
 	return (atoi(av));
+}
+
+std::vector<std::string> split(const std::string &s, char delimiter) {
+	std::vector<std::string> tokens;
+	std::string token;
+	std::istringstream tokenStream(s);
+	while (std::getline(tokenStream, token, delimiter)) {
+		tokens.push_back(token);
+	}
+	return tokens;
 }
