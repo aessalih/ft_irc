@@ -127,20 +127,20 @@ void Server::handleClientMessage(size_t i) {
 	}
 
 	// Check if client is registered
-	// if (clients[i - 1].getIsRegistered() == false) {
-	// 	if (clients[i - 1].getHavePass() == false) {
-	// 		if (check_password(buffer, client_fd)) {
-	// 			clients[i - 1].setHavePass(true);
-	// 			return ;
-	// 		}
-	// 		return ;
-	// 	}
-	// 	if (!check_names(clients, i - 1, buffer, client_fd))
-	// 		return ;
-	// 	clients[i - 1].setIsRegestered(true);
-	// 	send(client_fd, "You have to complete your registration\n", 40, 0);
-	// 	return ;
-	// }
+	if (clients[i - 1].getIsRegistered() == false) {
+		if (clients[i - 1].getHavePass() == false) {
+			if (check_password(buffer, client_fd)) {
+				clients[i - 1].setHavePass(true);
+				return ;
+			}
+			return ;
+		}
+		if (!check_names(clients, i - 1, buffer, client_fd))
+			return ;
+		clients[i - 1].setIsRegestered(true);
+		send(client_fd, "You have to complete your registration\n", 40, 0);
+		return ;
+	}
 
 	// Parse the message
 	std::string msg(buffer);
@@ -331,6 +331,174 @@ void Server::handleClientMessage(size_t i) {
 				send(client_fd, error_msg.c_str(), error_msg.length(), 0);
 			}
 		}
+	}
+	else if (cmd == "KICK") {
+		if (tokens.size() < 3) {
+			std::string error_msg = "461 KICK :Not enough parameters\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		std::string channel_name = tokens[1];
+		std::string target_nick = tokens[2];
+		if (!channel_name.empty() && channel_name[channel_name.size() - 1] == '\n') {
+			channel_name.erase(channel_name.size() - 1);
+		}
+		if (!target_nick.empty() && target_nick[target_nick.size() - 1] == '\n') {
+			target_nick.erase(target_nick.size() - 1);
+		}
+
+		// Validate channel name
+		if (channel_name[0] != '#') {
+			std::string error_msg = "403 " + channel_name + " :No such channel\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		// Find the channel
+		Channel *target_channel = NULL;
+		for (size_t j = 0; j < channels.size(); j++) {
+			if (channels[j].get_name() == channel_name) {
+				target_channel = &channels[j];
+				break;
+			}
+		}
+
+		if (!target_channel) {
+			std::string error_msg = "403 " + channel_name + " :No such channel\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		// Check if kicker is in the channel
+		bool kicker_in_channel = false;
+		const std::vector<Client> &channel_clients = target_channel->get_clients();
+		for (size_t j = 0; j < channel_clients.size(); j++) {
+			if (channel_clients[j] == clients[i - 1]) {
+				kicker_in_channel = true;
+				break;
+			}
+		}
+
+		if (!kicker_in_channel) {
+			std::string error_msg = "442 " + channel_name + " :You're not on that channel\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		// Find target client in channel
+		bool target_found = false;
+		Client *target_client = NULL;
+		for (size_t j = 0; j < channel_clients.size(); j++) {
+			if (channel_clients[j].getNickname() == target_nick) {
+				target_found = true;
+				target_client = const_cast<Client*>(&channel_clients[j]);
+				break;
+			}
+		}
+
+		if (!target_found) {
+			std::string error_msg = "441 " + target_nick + " " + channel_name + " :They aren't on that channel\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		// Remove client from channel
+		target_channel->delete_client(*target_client);
+
+		// Send KICK message to all clients in channel
+		std::string kick_msg = ":" + clients[i - 1].getNickname() + " KICK " + channel_name + " " + target_nick + "\n";
+		for (size_t j = 0; j < channel_clients.size(); j++) {
+			send(channel_clients[j].getFd(), kick_msg.c_str(), kick_msg.length(), 0);
+		}
+	}
+	else if (cmd == "INVITE") {
+		if (tokens.size() < 3) {
+			std::string error_msg = "461 INVITE :Not enough parameters\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		std::string target_nick = tokens[1];
+		std::string channel_name = tokens[2];
+		if (!channel_name.empty() && channel_name[channel_name.size() - 1] == '\n') {
+			channel_name.erase(channel_name.size() - 1);
+		}
+		if (!target_nick.empty() && target_nick[target_nick.size() - 1] == '\n') {
+			target_nick.erase(target_nick.size() - 1);
+		}
+
+		// Validate channel name
+		if (channel_name[0] != '#') {
+			std::string error_msg = "403 " + channel_name + " :No such channel\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		// Find the channel
+		Channel *target_channel = NULL;
+		for (size_t j = 0; j < channels.size(); j++) {
+			if (channels[j].get_name() == channel_name) {
+				target_channel = &channels[j];
+				break;
+			}
+		}
+
+		if (!target_channel) {
+			std::string error_msg = "403 " + channel_name + " :No such channel\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		// Check if inviter is in the channel
+		bool inviter_in_channel = false;
+		const std::vector<Client> &channel_clients = target_channel->get_clients();
+		for (size_t j = 0; j < channel_clients.size(); j++) {
+			if (channel_clients[j] == clients[i - 1]) {
+				inviter_in_channel = true;
+				break;
+			}
+		}
+
+		if (!inviter_in_channel) {
+			std::string error_msg = "442 " + channel_name + " :You're not on that channel\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		// Find target client in global client list
+		bool target_found = false;
+		Client *target_client = NULL;
+		for (size_t j = 0; j < clients.size(); j++) {
+			if (clients[j].getNickname() == target_nick) {
+				target_found = true;
+				target_client = &clients[j];
+				break;
+			}
+		}
+
+		if (!target_found) {
+			std::string error_msg = "401 " + target_nick + " :No such nick\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		// Check if target is already in the channel
+		for (size_t j = 0; j < channel_clients.size(); j++) {
+			if (channel_clients[j] == *target_client) {
+				std::string error_msg = "443 " + target_nick + " " + channel_name + " :is already on channel\n";
+				send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+				return;
+			}
+		}
+
+		// Send INVITE message to target client
+		std::string invite_msg = ":" + clients[i - 1].getNickname() + " INVITE " + target_nick + " " + channel_name + "\n";
+		send(target_client->getFd(), invite_msg.c_str(), invite_msg.length(), 0);
+
+		// Send RPL_INVITING to inviter
+		std::string inviting_msg = "341 " + clients[i - 1].getNickname() + " " + target_nick + " " + channel_name + "\n";
+		send(client_fd, inviting_msg.c_str(), inviting_msg.length(), 0);
 	}
 }
 
