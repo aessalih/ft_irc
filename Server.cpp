@@ -266,10 +266,14 @@ void Server::handleClientMessage(size_t i) {
 				message += " ";
 			message += tokens[j];
 		}
-
+		if (!message.empty() && message[message.size() - 1] == '\n') {
+			message.erase(message.size() - 1);
+		}
 		//Remove quotes if present
+			std::cout << '[' << message << ']' << std::endl;
 		if (message[0] == '"' && message[message.length() - 1] == '"') {
 			message = message.substr(1, message.length() - 2);
+			std::cout << message << std::endl;
 		}
 
 		// Check if target is a channel
