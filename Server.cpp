@@ -125,7 +125,6 @@ void Server::handleClientMessage(size_t i) {
 		fds.erase(fds.begin() + i);
 		return ;
 	}
-
 	// Check if client is registered
 	if (clients[i - 1].getIsRegistered() == false) {
 		if (clients[i - 1].getHavePass() == false) {
@@ -138,7 +137,7 @@ void Server::handleClientMessage(size_t i) {
 		if (!check_names(clients, i - 1, buffer, client_fd))
 			return ;
 		clients[i - 1].setIsRegestered(true);
-		send(client_fd, "You have to complete your registration\n", 40, 0);
+		send(client_fd, "You complete your registration\n", 32, 0);
 		return ;
 	}
 
@@ -529,6 +528,10 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 	name.erase(name.find_last_not_of("\n") + 1);
 	if (name == "nick") {
 		token = strtok(NULL, " ");
+		if (!token) {
+			send(fd, "You have to enter the right nickname(4-16 character)\n", 54, 0);
+			return 0;
+		}
 		name = token;
 		name.erase(name.find_last_not_of("\n") + 1);
 		if (name.length() < 4 && name.length() > 16) {
@@ -549,6 +552,10 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 	}
 	else if (name == "user") {
 		token = strtok(NULL, " ");
+		if (!token) {
+			send(fd, "You have to enter the right username(4-16 character)\n", 54, 0);
+			return 0;
+		}
 		name = token;
 		name.erase(name.find_last_not_of("\n") + 1);
 		if (name.length() < 4 && name.length() > 16) {
