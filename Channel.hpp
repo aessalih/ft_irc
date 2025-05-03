@@ -15,6 +15,9 @@ class Channel {
         int                 max_client;
         std::vector<Client> clients;
         std::vector<Client> priveleged_client;
+        // --- MODE FLAGS ---
+        bool invite_only;         // +i
+        bool topic_restricted;    // +t
 
     public:
         Channel(std::string name, int key);
@@ -38,6 +41,26 @@ class Channel {
         size_t          get_clients_size() const;
         const Client    &get_client(size_t index) const;
         const std::vector<Client>   &get_clients() const;
+
+        // --- MODE METHODS ---
+        void setInviteOnly(bool value);
+        bool isInviteOnly() const;
+
+        void setTopicRestricted(bool value);
+        bool isTopicRestricted() const;
+
+        void setKey(int new_key);
+        void removeKey();
+        bool hasKey() const;
+
+        void setMaxClients(int max);
+        void removeUserLimit();
+        bool hasUserLimit() const;
+
+        // Operator management
+        void addOperator(const Client& client);
+        void removeOperator(const Client& client);
+        bool isOperator(const Client& client) const;
 };
 
 #endif

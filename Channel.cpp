@@ -1,6 +1,7 @@
 #include "Channel.hpp"
 
-Channel::Channel(std::string name, int key) : name(name), key(key), topic(""), mode(""), current_clients(0), max_client(-1) {}
+Channel::Channel(std::string name, int key) : name(name), key(key), topic(""), mode(""), current_clients(0), max_client(-1),
+	invite_only(false), topic_restricted(false) {}
 
 Channel::Channel(const Channel &other) {
 	*this = other;
@@ -16,11 +17,11 @@ Channel &Channel::operator=(const Channel &other) {
 		max_client = other.max_client;
 		clients = other.clients;
 		priveleged_client = other.priveleged_client;
+		invite_only = other.invite_only;
+		topic_restricted = other.topic_restricted;
 	}
 	return *this;
 }
-
-
 
 Channel::~Channel() {
 }
@@ -86,4 +87,41 @@ const Client &Channel::get_client(size_t index) const {
 
 const std::vector<Client> &Channel::get_clients() const {
 	return clients;
+}
+
+void Channel::setInviteOnly(bool value) { invite_only = value; }
+bool Channel::isInviteOnly() const { return invite_only; }
+
+void Channel::setTopicRestricted(bool value) { topic_restricted = value; }
+bool Channel::isTopicRestricted() const { return topic_restricted; }
+
+void Channel::setKey(int new_key) { key = new_key; }
+void Channel::removeKey() { key = -1; }
+bool Channel::hasKey() const { return key != -1; }
+
+void Channel::setMaxClients(int max) { max_client = max; }
+void Channel::removeUserLimit() { max_client = -1; }
+bool Channel::hasUserLimit() const { return max_client != -1; }
+
+void Channel::addOperator(const Client& client) {
+	for (size_t i = 0; i < priveleged_client.size(); ++i) {
+		if (priveleged_client[i] == client)
+			return;
+	}
+	priveleged_client.push_back(client);
+}
+void Channel::removeOperator(const Client& client) {
+	for (size_t i = 0; i < priveleged_client.size(); ++i) {
+		if (priveleged_client[i] == client) {
+			priveleged_client.erase(priveleged_client.begin() + i);
+			break;
+		}
+	}
+}
+bool Channel::isOperator(const Client& client) const {
+	for (size_t i = 0; i < priveleged_client.size(); ++i) {
+		if (priveleged_client[i] == client)
+			return true;
+	}
+	return false;
 }
