@@ -36,7 +36,7 @@ Server::~Server() {
 	close(accept_fd);
 }
 
-// Methods definition
+// methods definition
 int	Server::init() {
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd == -1) {
@@ -125,7 +125,7 @@ void Server::handleClientMessage(size_t i) {
 		fds.erase(fds.begin() + i);
 		return ;
 	}
-	// Check if client is registered
+	// check if client is registered
 	if (clients[i - 1].getIsRegistered() == false) {
 		if (clients[i - 1].getHavePass() == false) {
 			if (check_password(buffer, client_fd)) {
@@ -141,7 +141,7 @@ void Server::handleClientMessage(size_t i) {
 		return ;
 	}
 
-	// Parse the message
+	// parse the message
 	std::string msg(buffer);
 	std::vector<std::string> tokens = split(msg);
 	
@@ -157,7 +157,7 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
-		// Parse channel name and key
+		// parse channel name and key
 		std::string channel_name = tokens[1];
 		if (!channel_name.empty() && channel_name[channel_name.size() - 1] == '\n') {
 			channel_name.erase(channel_name.size() - 1);
@@ -166,14 +166,14 @@ void Server::handleClientMessage(size_t i) {
 		if (tokens.size() >= 3)
 			key = tokens[2];
 
-		// Validate channel name
+		// validate channel name
 		if (channel_name[0] != '#') {
 			std::string error_msg = "403 " + channel_name + " :No such channel\n";
 			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
 			return;
 		}
 
-		// Check if channel exists
+		// check if channel exists
 		bool channel_exists = false;
 		Channel *target_channel = NULL;
 		
@@ -186,14 +186,14 @@ void Server::handleClientMessage(size_t i) {
 		}
 
 		if (!channel_exists) {
-			// Create new channel
+			// create new channel
 			int channel_key = -1;
 			if (!key.empty()) {
 				std::istringstream iss(key);
 				iss >> channel_key;
 			}
 			Channel new_channel(channel_name, channel_key);
-			// Add the creator as operator and set them as creator
+			// add the creator as operator and set them as creator
 			new_channel.addOperator(clients[i - 1]);
 			new_channel.setCreator(clients[i - 1]);
 			channels.push_back(new_channel);
@@ -201,7 +201,7 @@ void Server::handleClientMessage(size_t i) {
 		}
 
 		if (target_channel) {
-			// Check if channel need a key
+			// check if channel need a key
 			int channel_key = target_channel->get_key();
 			int provided_key = -1;
 			if (!key.empty()) {
@@ -215,7 +215,7 @@ void Server::handleClientMessage(size_t i) {
 				return;
 			}
 
-			// Check if channel is invite-only and user is not invited
+			// check if channel is invite-only and user is not invited
 			if (target_channel->get_mode().find('i') != std::string::npos) {
 				bool is_invited = false;
 				const std::vector<Client> &invited_users = target_channel->get_invited_users();
@@ -230,11 +230,11 @@ void Server::handleClientMessage(size_t i) {
 					send(client_fd, error_msg.c_str(), error_msg.length(), 0);
 					return;
 				}
-				// Remove user from invited list after successful join
+				// remove user from invited list after successful join
 				target_channel->remove_invited_user(clients[i - 1]);
 			}
 
-			// Check if channel has user limit and is full
+			// check if channel has user limit and is full
 			if (target_channel->get_mode().find('l') != std::string::npos) {
 				int max_clients = target_channel->get_max_clients();
 				const std::vector<Client>& channel_clients = target_channel->get_clients();
@@ -245,11 +245,11 @@ void Server::handleClientMessage(size_t i) {
 				}
 			}
 
-			// Check if user is already in the channel
+			// check if user is already in the channel
 			const std::vector<Client> &channel_clients = target_channel->get_clients();
 			for (size_t j = 0; j < channel_clients.size(); j++) {
 				if (channel_clients[j].getNickname() == clients[i - 1].getNickname()) {
-					// User is already in the channel, just send them the topic if it exists
+					// yser is already in the channel, just send them the topic if it exists
 					if (!target_channel->get_topic().empty()) {
 						std::string topic_msg = "332 " + clients[i - 1].getNickname() + " " + channel_name + " :" + target_channel->get_topic() + "\n";
 						send(client_fd, topic_msg.c_str(), topic_msg.length(), 0);
@@ -258,22 +258,22 @@ void Server::handleClientMessage(size_t i) {
 				}
 			}
 
-			// Add client to channel
+			// add client to channel
 			target_channel->add_client(clients[i - 1]);
 			
-			// Send JOIN message to all clients in channel
+			// send JOIN message to all clients in channel
 			std::string join_msg = ":" + clients[i - 1].getNickname() + " JOIN " + channel_name + "\n";
 			for (size_t j = 0; j < channel_clients.size(); j++) {
 				send(channel_clients[j].getFd(), join_msg.c_str(), join_msg.length(), 0);
 			}
 			
-			// Send RPL_TOPIC if exists
+			// send RPL_TOPIC if exists
 			if (!target_channel->get_topic().empty()) {
 				std::string topic_msg = "332 " + clients[i - 1].getNickname() + " " + channel_name + " :" + target_channel->get_topic() + "\n";
 				send(client_fd, topic_msg.c_str(), topic_msg.length(), 0);
 			}
 
-			// Send RPL_NAMREPLY
+			// send RPL_NAMREPLY
 			std::string names_msg = "353 " + clients[i - 1].getNickname() + " = " + channel_name + " :";
 			const std::vector<Client> &clients_list = target_channel->get_clients();
 			for (size_t j = 0; j < clients_list.size(); j++) {
@@ -284,7 +284,7 @@ void Server::handleClientMessage(size_t i) {
 			names_msg += "\n";
 			send(client_fd, names_msg.c_str(), names_msg.length(), 0);
 
-			// Send RPL_ENDOFNAMES
+			// send RPL_ENDOFNAMES
 			std::string end_names_msg = "366 " + clients[i - 1].getNickname() + " " + channel_name + " :End of /NAMES list\n";
 			send(client_fd, end_names_msg.c_str(), end_names_msg.length(), 0);
 		}
@@ -299,7 +299,7 @@ void Server::handleClientMessage(size_t i) {
 		std::string target = tokens[1];
 		std::string message;
 
-		// Combine all remaining tokens into the message
+		// combine all remaining tokens into the message
 		for (size_t j = 2; j < tokens.size(); j++) {
 			if (j > 2)
 				message += " ";
@@ -308,14 +308,14 @@ void Server::handleClientMessage(size_t i) {
 		if (!message.empty() && message[message.size() - 1] == '\n') {
 			message.erase(message.size() - 1);
 		}
-		//Remove quotes if present
+		//remove quotes if present
 		if (message[0] == '"' && message[message.length() - 1] == '"') {
 			message = message.substr(1, message.length() - 2);
 		}
 
-		// Check if target is a channel
+		// check if target is a channel
 		if (target[0] == '#') {
-			// Find the channel
+			// find the channel
 			Channel *target_channel = NULL;
 			for (size_t j = 0; j < channels.size(); j++) {
 				if (channels[j].get_name() == target) {
@@ -330,7 +330,7 @@ void Server::handleClientMessage(size_t i) {
 				return;
 			}
 
-			// Check if sender is in the channel
+			// check if sender is in the channel
 			bool is_in_channel = false;
 			const std::vector<Client> &channel_clients = target_channel->get_clients();
 			for (size_t j = 0; j < channel_clients.size(); j++) {
@@ -346,7 +346,7 @@ void Server::handleClientMessage(size_t i) {
 				return;
 			}
 
-			// Send message to all clients in channel
+			// send message to all clients in channel
 			std::string privmsg = ":" + clients[i - 1].getNickname() + " PRIVMSG " + target + " :" + message + "\n";
 			for (size_t j = 0; j < channel_clients.size(); j++) {
 				if (!(channel_clients[j] == clients[i - 1])) { // Don't send to self
@@ -355,7 +355,7 @@ void Server::handleClientMessage(size_t i) {
 			}
 		}
 		else {
-			// Target is a user
+			// target is a user
 			bool user_found = false;
 			for (size_t j = 0; j < clients.size(); j++) {
 				if (clients[j].getNickname() == target) {
@@ -388,14 +388,14 @@ void Server::handleClientMessage(size_t i) {
 			target_nick.erase(target_nick.size() - 1);
 		}
 
-		// Validate channel name
+		// validate channel name
 		if (channel_name[0] != '#') {
 			std::string error_msg = "403 " + channel_name + " :No such channel\n";
 			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
 			return;
 		}
 
-		// Find the channel
+		// find the channel
 		Channel *target_channel = NULL;
 		for (size_t j = 0; j < channels.size(); j++) {
 			if (channels[j].get_name() == channel_name) {
@@ -410,7 +410,7 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
-		// Check if kicker is in the channel
+		// check if kicker is in the channel
 		bool kicker_in_channel = false;
 		const std::vector<Client> &channel_clients = target_channel->get_clients();
 		for (size_t j = 0; j < channel_clients.size(); j++) {
@@ -426,7 +426,7 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
-		// Find target client in channel
+		// find target client in channel
 		bool target_found = false;
 		Client *target_client = NULL;
 		for (size_t j = 0; j < channel_clients.size(); j++) {
@@ -443,17 +443,17 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
-		// Check if kicker is creator or operator
+		// check if kicker is creator or operator
 		if (target_channel->getCreator() != clients[i - 1] && !target_channel->isOperator(clients[i - 1])) {
 			std::string error_msg = "482 " + channel_name + " :You're not channel operator\n";
 			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
 			return;
 		}
 
-		// Remove client from channel
+		// remove client from channel
 		target_channel->delete_client(*target_client);
 
-		// Send KICK message to all clients in channel
+		// send KICK message to all clients in channel
 		std::string kick_msg = ":" + clients[i - 1].getNickname() + " KICK " + channel_name + " " + target_nick + "\n";
 		for (size_t j = 0; j < channel_clients.size(); j++) {
 			send(channel_clients[j].getFd(), kick_msg.c_str(), kick_msg.length(), 0);
@@ -475,14 +475,14 @@ void Server::handleClientMessage(size_t i) {
 			target_nick.erase(target_nick.size() - 1);
 		}
 
-		// Validate channel name
+		// validate channel name
 		if (channel_name[0] != '#') {
 			std::string error_msg = "403 " + channel_name + " :No such channel\n";
 			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
 			return;
 		}
 
-		// Find the channel
+		// find the channel
 		Channel *target_channel = NULL;
 		for (size_t j = 0; j < channels.size(); j++) {
 			if (channels[j].get_name() == channel_name) {
@@ -497,7 +497,7 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
-		// Check if inviter is in the channel
+		// check if inviter is in the channel
 		bool inviter_in_channel = false;
 		const std::vector<Client> &channel_clients = target_channel->get_clients();
 		for (size_t j = 0; j < channel_clients.size(); j++) {
@@ -513,7 +513,7 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
-		// Find target client in global client list
+		// find target client in global client list
 		bool target_found = false;
 		Client *target_client = NULL;
 		for (size_t j = 0; j < clients.size(); j++) {
@@ -530,7 +530,7 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
-		// Check if target is already in the channel
+		// check if target is already in the channel
 		for (size_t j = 0; j < channel_clients.size(); j++) {
 			if (channel_clients[j] == *target_client) {
 				std::string error_msg = "443 " + target_nick + " " + channel_name + " :is already on channel\n";
@@ -539,14 +539,14 @@ void Server::handleClientMessage(size_t i) {
 			}
 		}
 
-		// Send INVITE message to target client
+		// send INVITE message to target client
 		std::string invite_msg = ":" + clients[i - 1].getNickname() + " INVITE " + target_nick + " " + channel_name + "\n";
 		send(target_client->getFd(), invite_msg.c_str(), invite_msg.length(), 0);
 
-		// Add user to invited list
+		// add user to invited list
 		target_channel->add_invited_user(*target_client);
 
-		// Send RPL_INVITING to inviter
+		// send RPL_INVITING to inviter
 		std::string inviting_msg = "341 " + clients[i - 1].getNickname() + " " + target_nick + " " + channel_name + "\n";
 		send(client_fd, inviting_msg.c_str(), inviting_msg.length(), 0);
 	}
@@ -560,7 +560,7 @@ void Server::handleClientMessage(size_t i) {
 		std::string channel_name = tokens[1];
 		Channel* target_channel = NULL;
 
-		// Find the channel
+		// find the channel
 		for (size_t j = 0; j < channels.size(); j++) {
 			if (channels[j].get_name() == channel_name) {
 				target_channel = &channels[j];
@@ -574,7 +574,7 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
-		// Check if user is in the channel
+		// check if user is in the channel
 		bool user_in_channel = false;
 		const std::vector<Client>& channel_clients = target_channel->get_clients();
 		for (size_t j = 0; j < channel_clients.size(); j++) {
@@ -590,7 +590,7 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
-		// If no topic provided, show current topic (allowed for all users)
+		// if no topic provided, show current topic (allowed for all users)
 		if (tokens.size() == 2) {
 			std::string topic = target_channel->get_topic();
 			if (topic.empty()) {
@@ -604,14 +604,14 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
-		// If trying to change topic, check if user is creator or operator
+		// if trying to change topic, check if user is creator or operator
 		if (target_channel->getCreator() != clients[i - 1] && !target_channel->isOperator(clients[i - 1])) {
 			std::string error_msg = "482 " + channel_name + " :You're not channel operator\n";
 			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
 			return;
 		}
 
-		// Combine remaining tokens for topic
+		// combine remaining tokens for topic
 		std::string new_topic;
 		for (size_t j = 2; j < tokens.size(); j++) {
 			if (j > 2) new_topic += " ";
@@ -622,14 +622,14 @@ void Server::handleClientMessage(size_t i) {
 			}
 		}
 
-		// Remove trailing newline if present
+		// remove trailing newline if present
 		if (!new_topic.empty() && new_topic[new_topic.size() - 1] == '\n') {
 			new_topic.erase(new_topic.size() - 1);
 		}
 
 		target_channel->set_topic(new_topic);
 		
-		// Notify all channel members of topic change
+		// notify all channel members of topic change
 		std::string topic_msg = ":" + clients[i - 1].getNickname() + " TOPIC " + channel_name + " :" + new_topic + "\n";
 		for (size_t j = 0; j < channel_clients.size(); j++) {
 			send(channel_clients[j].getFd(), topic_msg.c_str(), topic_msg.length(), 0);
@@ -649,7 +649,7 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
-		// Find the channel
+		// find the channel
 		Channel* target_channel = NULL;
 		for (size_t j = 0; j < channels.size(); j++) {
 			if (channels[j].get_name() == channel_name) {
@@ -664,7 +664,7 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
-		// Check if user is in the channel
+		// check if user is in the channel
 		bool user_in_channel = false;
 		const std::vector<Client>& channel_clients = target_channel->get_clients();
 		for (size_t j = 0; j < channel_clients.size(); j++) {
@@ -680,14 +680,14 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
-		// If no mode change requested, show current modes
+		// if no mode change requested, show current modes
 		if (tokens.size() == 2) {
 			std::string mode_msg = "324 " + clients[i - 1].getNickname() + " " + channel_name + " " + target_channel->get_mode() + "\n";
 			send(client_fd, mode_msg.c_str(), mode_msg.length(), 0);
 			return;
 		}
 
-		// Parse mode change
+		// parse mode change
 		std::string mode_str = tokens[2];
 		if (mode_str.length() < 2 || (mode_str[0] != '+' && mode_str[0] != '-')) {
 			std::string error_msg = "472 " + mode_str + " :is unknown mode char to me\n";
@@ -699,33 +699,33 @@ void Server::handleClientMessage(size_t i) {
 		bool is_adding = (mode_str[0] == '+');
 		int value = is_adding;
 
-		// Check if user has permission (creator or operator)
+		// check if user has permission (creator or operator)
 		bool has_permission = (target_channel->getCreator() == clients[i - 1]) || 
 							(target_channel->isOperator(clients[i - 1]));
 
-		// Special case for +o/-o which only creator can use
+		// special case for +o/-o which only creator can use
 		if (mode_char == 'o' && target_channel->getCreator() != clients[i - 1]) {
 			std::string error_msg = "482 " + channel_name + " :You're not channel creator\n";
 			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
 			return;
 		}
 
-		// For other modes, check if user has permission
+		// for other modes, check if user has permission
 		if (!has_permission) {
 			std::string error_msg = "482 " + channel_name + " :You're not channel operator\n";
 			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
 			return;
 		}
 
-		// Handle specific mode changes
+		// handle specific mode changes
 		switch (mode_char) {
-			case 'i': // Invite-only
+			case 'i':
 				target_channel->setMode('i', value);
 				break;
-			case 't': // Topic restriction
+			case 't':
 				target_channel->setMode('t', value);
 				break;
-			case 'k': // Channel key
+			case 'k':
 				if (is_adding) {
 					if (tokens.size() < 4) {
 						std::string error_msg = "461 MODE :Not enough parameters\n";
@@ -739,7 +739,7 @@ void Server::handleClientMessage(size_t i) {
 				}
 				target_channel->setMode('k', value);
 				break;
-			case 'o': // Operator privilege
+			case 'o':
 				if (tokens.size() < 4) {
 					std::string error_msg = "461 MODE :Not enough parameters\n";
 					send(client_fd, error_msg.c_str(), error_msg.length(), 0);
@@ -747,7 +747,7 @@ void Server::handleClientMessage(size_t i) {
 				}
 				{
 					std::string target_nick = tokens[3];
-					// Find target client
+					// find target client
 					for (size_t j = 0; j < channel_clients.size(); j++) {
 						if (channel_clients[j].getNickname() == target_nick) {
 							if (is_adding) {
@@ -761,7 +761,7 @@ void Server::handleClientMessage(size_t i) {
 				}
 				target_channel->setMode('o', value);
 				break;
-			case 'l': // User limit
+			case 'l':
 				if (is_adding) {
 					if (tokens.size() < 4) {
 						std::string error_msg = "461 MODE :Not enough parameters\n";
@@ -781,7 +781,7 @@ void Server::handleClientMessage(size_t i) {
 				return;
 		}
 
-		// Notify all channel members of mode change
+		// notify all channel members of mode change
 		std::string mode_change_msg = ":" + clients[i - 1].getNickname() + " MODE " + channel_name + " " + mode_str;
 		if (tokens.size() > 3) {
 			mode_change_msg += " " + tokens[3];

@@ -44,14 +44,14 @@ class Server {
 		int	parse_port(char *port);
 
 	public:
-		// Canonical form and parameterize constructor // SIGPIPE SIGINT SIGUP
+		// canonical form and parameterize constructor
 		Server();
 		Server(char **av);
 		Server(const Server& obj);
 		Server&	operator=(const Server& obj);
 		~Server();
 
-		// Methods
+		// methods
 		int	init();
 		int run();
 		int handleNewClients();

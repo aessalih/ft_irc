@@ -155,7 +155,7 @@ void Channel::setCreator(const Client &client) {
 	creator = client;
 }
 
-// Mode management methods
+// mode management methods
 void Channel::setMode(char mode, int value) {
 	switch (mode) {
 		case 'i':
