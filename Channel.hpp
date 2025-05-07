@@ -5,21 +5,34 @@
 # include <vector>
 # include "Client.hpp"
 
+typedef struct mode {
+    int i;  // Invite-only
+    int t;  // Topic restriction
+    int k;  // Channel key
+    int o;  // Operator privilege
+    int l;  // User limit
+} MODE;
+
 class Channel {
     private:
         std::string         name;
-        int                 key;
+        int                 key;// string
         std::string         topic;
         std::string         mode;
         int                 current_clients;
         int                 max_client;
         std::vector<Client> clients;
         std::vector<Client> priveleged_client;
+        Client              creator;  // Channel creator
+        MODE                channel_mode;  // Channel mode flags
         // --- MODE FLAGS ---
         bool invite_only;         // +i
         bool topic_restricted;    // +t
+        std::vector<Client> operators;
+        std::vector<Client> invited_users;
 
     public:
+        Channel();  // Default constructor
         Channel(std::string name, int key);
         Channel(const Channel &other);
         Channel &operator=(const Channel &other);
@@ -41,6 +54,8 @@ class Channel {
         size_t          get_clients_size() const;
         const Client    &get_client(size_t index) const;
         const std::vector<Client>   &get_clients() const;
+        const Client    &getCreator() const;  // Get channel creator
+        void            setCreator(const Client &client);  // Set channel creator
 
         // --- MODE METHODS ---
         void setInviteOnly(bool value);
@@ -61,6 +76,24 @@ class Channel {
         void addOperator(const Client& client);
         void removeOperator(const Client& client);
         bool isOperator(const Client& client) const;
+
+        // Mode management
+        void setMode(char mode, int value);
+        int getMode(char mode) const;
+        void updateModeString();
+        const MODE& getChannelMode() const;
+
+        const std::vector<Client>& get_invited_users() const { return invited_users; }
+        int get_max_clients() const { return max_client; }
+        void add_invited_user(const Client& client) { invited_users.push_back(client); }
+        void remove_invited_user(const Client& client) {
+            for (size_t i = 0; i < invited_users.size(); i++) {
+                if (invited_users[i] == client) {
+                    invited_users.erase(invited_users.begin() + i);
+                    break;
+                }
+            }
+        }
 };
 
 #endif

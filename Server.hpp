@@ -59,7 +59,7 @@ class Server {
 		int	check_password(char *buffer, int fd);
 		int	check_names(std::vector<Client> &clients, size_t i, char *buffer, int fd);
 };
-std::vector<std::string> split(const std::string &s, char delimiter);
+std::vector<std::string> split(const std::string &s);
 
 #endif
 

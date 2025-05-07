@@ -1,10 +1,11 @@
 #include "Client.hpp"
 
+
 Client::Client(int fd) : fd(fd), nickname(""), username(""), have_pass(false), isRegistered(false) {
 }
 
-Client::Client(const Client& obj) {
-	*this = obj;
+Client::Client(const Client& obj) : fd(obj.fd), nickname(obj.nickname), username(obj.username),
+	have_pass(obj.have_pass), isRegistered(obj.isRegistered) {
 }
 
 Client& Client::operator=(const Client& obj) {
@@ -59,4 +60,8 @@ const bool& Client::getHavePass(void) const {
 
 bool Client::operator==(const Client& obj) const {
 	return (fd == obj.fd && nickname == obj.nickname && username == obj.username);
+}
+
+bool Client::operator!=(const Client& obj) const {
+	return (fd != obj.fd && nickname != obj.nickname && username != obj.username); 
 }

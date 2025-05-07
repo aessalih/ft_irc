@@ -1,5 +1,5 @@
-#ifndef _CLIENT_HPP_
-# define _CLIENT_HPP_
+#ifndef CLIENT_HPP
+# define CLIENT_HPP
 
 # include <string>
 
@@ -25,6 +25,7 @@ class Client {
 		const bool& getIsRegistered(void) const;
 		const bool& getHavePass(void) const;
 		bool operator==(const Client& obj) const;
+		bool operator!=(const Client& obj) const;
 };
 
 #endif

@@ -143,7 +143,7 @@ void Server::handleClientMessage(size_t i) {
 
 	// Parse the message
 	std::string msg(buffer);
-	std::vector<std::string> tokens = split(msg, ' ');
+	std::vector<std::string> tokens = split(msg);
 	
 	std::string cmd = tokens[0];
 	if (!cmd.empty() && cmd[cmd.size() - 1] == '\n') {
@@ -161,8 +161,7 @@ void Server::handleClientMessage(size_t i) {
 		std::string channel_name = tokens[1];
 		if (!channel_name.empty() && channel_name[channel_name.size() - 1] == '\n') {
 			channel_name.erase(channel_name.size() - 1);
-		}	
-		std::cout << "[" << channel_name << "]" <<std::endl;	
+		}		
 		std::string key = "";
 		if (tokens.size() >= 3)
 			key = tokens[2];
@@ -194,13 +193,13 @@ void Server::handleClientMessage(size_t i) {
 				iss >> channel_key;
 			}
 			Channel new_channel(channel_name, channel_key);
-			// Add the creator as operator
+			// Add the creator as operator and set them as creator
 			new_channel.addOperator(clients[i - 1]);
+			new_channel.setCreator(clients[i - 1]);
 			channels.push_back(new_channel);
 			target_channel = &channels.back();
 		}
 
-		// Add client to channel
 		if (target_channel) {
 			// Check if channel need a key
 			int channel_key = target_channel->get_key();
@@ -216,12 +215,54 @@ void Server::handleClientMessage(size_t i) {
 				return;
 			}
 
+			// Check if channel is invite-only and user is not invited
+			if (target_channel->get_mode().find('i') != std::string::npos) {
+				bool is_invited = false;
+				const std::vector<Client> &invited_users = target_channel->get_invited_users();
+				for (size_t j = 0; j < invited_users.size(); j++) {
+					if (invited_users[j] == clients[i - 1]) {
+						is_invited = true;
+						break;
+					}
+				}
+				if (!is_invited) {
+					std::string error_msg = "473 " + channel_name + " :Cannot join channel (+i)\n";
+					send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+					return;
+				}
+				// Remove user from invited list after successful join
+				target_channel->remove_invited_user(clients[i - 1]);
+			}
+
+			// Check if channel has user limit and is full
+			if (target_channel->get_mode().find('l') != std::string::npos) {
+				int max_clients = target_channel->get_max_clients();
+				const std::vector<Client>& channel_clients = target_channel->get_clients();
+				if (max_clients > 0 && static_cast<int>(channel_clients.size()) >= max_clients) {
+					std::string error_msg = "471 " + channel_name + " :Cannot join channel (+l)\n";
+					send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+					return;
+				}
+			}
+
+			// Check if user is already in the channel
+			const std::vector<Client> &channel_clients = target_channel->get_clients();
+			for (size_t j = 0; j < channel_clients.size(); j++) {
+				if (channel_clients[j].getNickname() == clients[i - 1].getNickname()) {
+					// User is already in the channel, just send them the topic if it exists
+					if (!target_channel->get_topic().empty()) {
+						std::string topic_msg = "332 " + clients[i - 1].getNickname() + " " + channel_name + " :" + target_channel->get_topic() + "\n";
+						send(client_fd, topic_msg.c_str(), topic_msg.length(), 0);
+					}
+					return;
+				}
+			}
+
 			// Add client to channel
 			target_channel->add_client(clients[i - 1]);
 			
 			// Send JOIN message to all clients in channel
 			std::string join_msg = ":" + clients[i - 1].getNickname() + " JOIN " + channel_name + "\n";
-			const std::vector<Client> &channel_clients = target_channel->get_clients();
 			for (size_t j = 0; j < channel_clients.size(); j++) {
 				send(channel_clients[j].getFd(), join_msg.c_str(), join_msg.length(), 0);
 			}
@@ -249,9 +290,6 @@ void Server::handleClientMessage(size_t i) {
 		}
 	}
 	else if (tokens[0] == "PRIVMSG") {
-		// std::cout << tokens[0] << "\n";
-		// std::cout << tokens[1] << "\n";
-		// std::cout << tokens[2] << "\n";
 		if (tokens.size() < 3) {
 			std::string error_msg = "461 PRIVMSG :Not enough parameters\n";
 			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
@@ -273,7 +311,6 @@ void Server::handleClientMessage(size_t i) {
 		//Remove quotes if present
 		if (message[0] == '"' && message[message.length() - 1] == '"') {
 			message = message.substr(1, message.length() - 2);
-			std::cout << message << std::endl;
 		}
 
 		// Check if target is a channel
@@ -281,7 +318,6 @@ void Server::handleClientMessage(size_t i) {
 			// Find the channel
 			Channel *target_channel = NULL;
 			for (size_t j = 0; j < channels.size(); j++) {
-				std::cout << channels[j].get_name() << "choof \n";
 				if (channels[j].get_name() == target) {
 					target_channel = &channels[j];
 					break;
@@ -407,6 +443,13 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
+		// Check if kicker is creator or operator
+		if (target_channel->getCreator() != clients[i - 1] && !target_channel->isOperator(clients[i - 1])) {
+			std::string error_msg = "482 " + channel_name + " :You're not channel operator\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
 		// Remove client from channel
 		target_channel->delete_client(*target_client);
 
@@ -500,6 +543,9 @@ void Server::handleClientMessage(size_t i) {
 		std::string invite_msg = ":" + clients[i - 1].getNickname() + " INVITE " + target_nick + " " + channel_name + "\n";
 		send(target_client->getFd(), invite_msg.c_str(), invite_msg.length(), 0);
 
+		// Add user to invited list
+		target_channel->add_invited_user(*target_client);
+
 		// Send RPL_INVITING to inviter
 		std::string inviting_msg = "341 " + clients[i - 1].getNickname() + " " + target_nick + " " + channel_name + "\n";
 		send(client_fd, inviting_msg.c_str(), inviting_msg.length(), 0);
@@ -513,9 +559,6 @@ void Server::handleClientMessage(size_t i) {
 
 		std::string channel_name = tokens[1];
 		Channel* target_channel = NULL;
-
-		if (!channel_name.empty() && channel_name[channel_name.size() - 1] == '\n') {
-			channel_name.erase(channel_name.size() - 1);
 
 		// Find the channel
 		for (size_t j = 0; j < channels.size(); j++) {
@@ -547,21 +590,22 @@ void Server::handleClientMessage(size_t i) {
 			return;
 		}
 
-		// If no topic provided, show current topic
+		// If no topic provided, show current topic (allowed for all users)
 		if (tokens.size() == 2) {
 			std::string topic = target_channel->get_topic();
 			if (topic.empty()) {
-				std::string msg = "331 " + channel_name + " :No topic is set\n";
+				std::string msg = "331 " + clients[i - 1].getNickname() + " " + channel_name + " :No topic is set\n";
 				send(client_fd, msg.c_str(), msg.length(), 0);
-			} else {
-				std::string msg = "332 " + channel_name + " :" + topic + "\n";
+			}
+			else {
+				std::string msg = "332 " + clients[i - 1].getNickname() + " " + channel_name + " :" + topic + "\n";
 				send(client_fd, msg.c_str(), msg.length(), 0);
 			}
 			return;
 		}
 
-		// Setting new topic
-		if (target_channel->isTopicRestricted() && !target_channel->isOperator(clients[i - 1])) {
+		// If trying to change topic, check if user is creator or operator
+		if (target_channel->getCreator() != clients[i - 1] && !target_channel->isOperator(clients[i - 1])) {
 			std::string error_msg = "482 " + channel_name + " :You're not channel operator\n";
 			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
 			return;
@@ -571,9 +615,17 @@ void Server::handleClientMessage(size_t i) {
 		std::string new_topic;
 		for (size_t j = 2; j < tokens.size(); j++) {
 			if (j > 2) new_topic += " ";
-			new_topic += tokens[j];
+			if (j == 2 && !tokens[j].empty() && tokens[j][0] == ':') {
+				new_topic += tokens[j].substr(1);
+			} else {
+				new_topic += tokens[j];
+			}
 		}
-		
+
+		// Remove trailing newline if present
+		if (!new_topic.empty() && new_topic[new_topic.size() - 1] == '\n') {
+			new_topic.erase(new_topic.size() - 1);
+		}
 
 		target_channel->set_topic(new_topic);
 		
@@ -584,13 +636,20 @@ void Server::handleClientMessage(size_t i) {
 		}
 	}
 	else if (cmd == "MODE") {
-		if (tokens.size() < 3) {
+		if (tokens.size() < 2) {
 			std::string error_msg = "461 MODE :Not enough parameters\n";
 			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
 			return;
 		}
+
 		std::string channel_name = tokens[1];
-		std::string mode_string = tokens[2];
+		if (channel_name[0] != '#') {
+			std::string error_msg = "403 " + channel_name + " :No such channel\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		// Find the channel
 		Channel* target_channel = NULL;
 		for (size_t j = 0; j < channels.size(); j++) {
 			if (channels[j].get_name() == channel_name) {
@@ -598,96 +657,140 @@ void Server::handleClientMessage(size_t i) {
 				break;
 			}
 		}
+
 		if (!target_channel) {
 			std::string error_msg = "403 " + channel_name + " :No such channel\n";
 			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
 			return;
 		}
-		// Only operators can change most modes
-		if (!target_channel->isOperator(clients[i - 1])) {
+
+		// Check if user is in the channel
+		bool user_in_channel = false;
+		const std::vector<Client>& channel_clients = target_channel->get_clients();
+		for (size_t j = 0; j < channel_clients.size(); j++) {
+			if (channel_clients[j] == clients[i - 1]) {
+				user_in_channel = true;
+				break;
+			}
+		}
+
+		if (!user_in_channel) {
+			std::string error_msg = "442 " + channel_name + " :You're not on that channel\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		// If no mode change requested, show current modes
+		if (tokens.size() == 2) {
+			std::string mode_msg = "324 " + clients[i - 1].getNickname() + " " + channel_name + " " + target_channel->get_mode() + "\n";
+			send(client_fd, mode_msg.c_str(), mode_msg.length(), 0);
+			return;
+		}
+
+		// Parse mode change
+		std::string mode_str = tokens[2];
+		if (mode_str.length() < 2 || (mode_str[0] != '+' && mode_str[0] != '-')) {
+			std::string error_msg = "472 " + mode_str + " :is unknown mode char to me\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		char mode_char = mode_str[1];
+		bool is_adding = (mode_str[0] == '+');
+		int value = is_adding;
+
+		// Check if user has permission (creator or operator)
+		bool has_permission = (target_channel->getCreator() == clients[i - 1]) || 
+							(target_channel->isOperator(clients[i - 1]));
+
+		// Special case for +o/-o which only creator can use
+		if (mode_char == 'o' && target_channel->getCreator() != clients[i - 1]) {
+			std::string error_msg = "482 " + channel_name + " :You're not channel creator\n";
+			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+			return;
+		}
+
+		// For other modes, check if user has permission
+		if (!has_permission) {
 			std::string error_msg = "482 " + channel_name + " :You're not channel operator\n";
 			send(client_fd, error_msg.c_str(), error_msg.length(), 0);
 			return;
 		}
-		size_t param_idx = 3;
-		bool adding = true;
-		for (size_t m = 0; m < mode_string.size(); ++m) {
-			char mode = mode_string[m];
-			if (mode == '+')
-				adding = true;
-			if (mode == '-')
-				adding = false;
-			switch (mode) {
-				case 'i':
-					target_channel->setInviteOnly(adding);
-					break;
-				case 't':
-					target_channel->setTopicRestricted(adding);
-					break;
-				case 'k':
-					if (adding) {
-						if (tokens.size() > param_idx) {
-							int key_val;
-							std::istringstream iss(tokens[param_idx++]);
-							iss >> key_val;
-							target_channel->setKey(key_val);
-						} else {
-							std::string error_msg = "461 MODE :Not enough parameters for +k\n";
-							send(client_fd, error_msg.c_str(), error_msg.length(), 0);
-							return;
-						}
-					} else {
-						target_channel->removeKey();
-					}
-					break;
-				case 'o':
-					if (tokens.size() > param_idx) {
-						std::string nick = tokens[param_idx++];
-						Client* op_client = NULL;
-						for (size_t c = 0; c < clients.size(); ++c) {
-							if (clients[c].getNickname() == nick) {
-								op_client = &clients[c];
-								break;
-							}
-						}
-						if (!op_client) {
-							std::string error_msg = "401 " + nick + " :No such nick\n";
-							send(client_fd, error_msg.c_str(), error_msg.length(), 0);
-							return;
-						}
-						if (adding)
-							target_channel->addOperator(*op_client);
-						else
-							target_channel->removeOperator(*op_client);
-					} else {
-						std::string error_msg = "461 MODE :Not enough parameters for +o/-o\n";
+
+		// Handle specific mode changes
+		switch (mode_char) {
+			case 'i': // Invite-only
+				target_channel->setMode('i', value);
+				break;
+			case 't': // Topic restriction
+				target_channel->setMode('t', value);
+				break;
+			case 'k': // Channel key
+				if (is_adding) {
+					if (tokens.size() < 4) {
+						std::string error_msg = "461 MODE :Not enough parameters\n";
 						send(client_fd, error_msg.c_str(), error_msg.length(), 0);
 						return;
 					}
-					break;
-				case 'l':
-					if (adding) {
-						if (tokens.size() > param_idx) {
-							int limit_val;
-							std::istringstream iss(tokens[param_idx++]);
-							iss >> limit_val;
-							target_channel->setMaxClients(limit_val);
-						} else {
-							std::string error_msg = "461 MODE :Not enough parameters for +l\n";
-							send(client_fd, error_msg.c_str(), error_msg.length(), 0);
-							return;
+					int new_key = atoi(tokens[3].c_str());
+					target_channel->setKey(new_key);
+				} else {
+					target_channel->removeKey();
+				}
+				target_channel->setMode('k', value);
+				break;
+			case 'o': // Operator privilege
+				if (tokens.size() < 4) {
+					std::string error_msg = "461 MODE :Not enough parameters\n";
+					send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+					return;
+				}
+				{
+					std::string target_nick = tokens[3];
+					// Find target client
+					for (size_t j = 0; j < channel_clients.size(); j++) {
+						if (channel_clients[j].getNickname() == target_nick) {
+							if (is_adding) {
+								target_channel->addOperator(channel_clients[j]);
+							} else {
+								target_channel->removeOperator(channel_clients[j]);
+							}
+							break;
 						}
-					} else {
-						target_channel->removeUserLimit();
 					}
-					break;
-			}
+				}
+				target_channel->setMode('o', value);
+				break;
+			case 'l': // User limit
+				if (is_adding) {
+					if (tokens.size() < 4) {
+						std::string error_msg = "461 MODE :Not enough parameters\n";
+						send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+						return;
+					}
+					int limit = atoi(tokens[3].c_str());
+					target_channel->setMaxClients(limit);
+				} else {
+					target_channel->removeUserLimit();
+				}
+				target_channel->setMode('l', value);
+				break;
+			default:
+				std::string error_msg = "472 " + std::string(1, mode_char) + " :is unknown mode char to me\n";
+				send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+				return;
 		}
-		std::string reply = "324 " + clients[i - 1].getNickname() + " " + channel_name + " " + mode_string + "\n";
-		send(client_fd, reply.c_str(), reply.length(), 0);
-		return;
+
+		// Notify all channel members of mode change
+		std::string mode_change_msg = ":" + clients[i - 1].getNickname() + " MODE " + channel_name + " " + mode_str;
+		if (tokens.size() > 3) {
+			mode_change_msg += " " + tokens[3];
+		}
+		mode_change_msg += "\n";
+		for (size_t j = 0; j < channel_clients.size(); j++) {
+			send(channel_clients[j].getFd(), mode_change_msg.c_str(), mode_change_msg.length(), 0);
+		}
 	}
-}
 }
 
 int	Server::check_password(char *buffer, int fd) {
@@ -767,12 +870,29 @@ int	Server::parse_port(char *av) {
 	return (atoi(av));
 }
 
-std::vector<std::string> split(const std::string &s, char delimiter) {
+std::vector<std::string> split(const std::string &s){
 	std::vector<std::string> tokens;
 	std::string token;
 	std::istringstream tokenStream(s);
-	while (std::getline(tokenStream, token, delimiter)) {
-		tokens.push_back(token);
+	bool inWord = false;
+	std::string currentWord;
+
+	for (size_t i = 0; i < s.length(); i++) {
+		if (s[i] == ' ' || s[i] == '\t' || s[i] == '\n') {
+			if (inWord) {
+				tokens.push_back(currentWord);
+				currentWord.clear();
+				inWord = false;
+			}
+		} else {
+			currentWord += s[i];
+			inWord = true;
+		}
 	}
+
+	if (inWord && !currentWord.empty()) {
+		tokens.push_back(currentWord);
+	}
+
 	return tokens;
 }

@@ -1,10 +1,29 @@
 #include "Channel.hpp"
 
-Channel::Channel(std::string name, int key) : name(name), key(key), topic(""), mode(""), current_clients(0), max_client(-1),
-	invite_only(false), topic_restricted(false) {}
+Channel::Channel() : name(""), key(-1), topic(""), mode(""), current_clients(0), max_client(-1),
+	creator(-1), invite_only(false), topic_restricted(false) {
+	channel_mode.i = -1;
+	channel_mode.t = -1;
+	channel_mode.k = -1;
+	channel_mode.o = -1;
+	channel_mode.l = -1;
+}
 
-Channel::Channel(const Channel &other) {
-	*this = other;
+Channel::Channel(std::string name, int key) : name(name), key(key), topic(""), mode(""), current_clients(0), max_client(-1),
+	creator(-1), invite_only(false), topic_restricted(false) {
+	channel_mode.i = -1;
+	channel_mode.t = -1;
+	channel_mode.k = -1;
+	channel_mode.o = -1;
+	channel_mode.l = -1;
+}
+
+Channel::Channel(const Channel &other) : name(other.name), key(other.key), topic(other.topic), 
+	mode(other.mode), current_clients(other.current_clients), max_client(other.max_client),
+	creator(other.creator), invite_only(other.invite_only), topic_restricted(other.topic_restricted),
+	channel_mode(other.channel_mode) {
+	clients = other.clients;
+	priveleged_client = other.priveleged_client;
 }
 
 Channel &Channel::operator=(const Channel &other) {
@@ -17,8 +36,10 @@ Channel &Channel::operator=(const Channel &other) {
 		max_client = other.max_client;
 		clients = other.clients;
 		priveleged_client = other.priveleged_client;
+		creator = other.creator;
 		invite_only = other.invite_only;
 		topic_restricted = other.topic_restricted;
+		channel_mode = other.channel_mode;
 	}
 	return *this;
 }
@@ -124,4 +145,60 @@ bool Channel::isOperator(const Client& client) const {
 			return true;
 	}
 	return false;
+}
+
+const Client &Channel::getCreator() const {
+	return creator;
+}
+
+void Channel::setCreator(const Client &client) {
+	creator = client;
+}
+
+// Mode management methods
+void Channel::setMode(char mode, int value) {
+	switch (mode) {
+		case 'i':
+			channel_mode.i = value;
+			invite_only = (value == 1);
+			break;
+		case 't':
+			channel_mode.t = value;
+			topic_restricted = (value == 1);
+			break;
+		case 'k':
+			channel_mode.k = value;
+			break;
+		case 'o':
+			channel_mode.o = value;
+			break;
+		case 'l':
+			channel_mode.l = value;
+			break;
+	}
+	updateModeString();
+}
+
+int Channel::getMode(char mode) const {
+	switch (mode) {
+		case 'i': return channel_mode.i;
+		case 't': return channel_mode.t;
+		case 'k': return channel_mode.k;
+		case 'o': return channel_mode.o;
+		case 'l': return channel_mode.l;
+		default: return -1;
+	}
+}
+
+void Channel::updateModeString() {
+	mode.clear();
+	if (channel_mode.i == 1) mode += "+i";
+	if (channel_mode.t == 1) mode += "+t";
+	if (channel_mode.k == 1) mode += "+k";
+	if (channel_mode.o == 1) mode += "+o";
+	if (channel_mode.l == 1) mode += "+l";
+}
+
+const MODE& Channel::getChannelMode() const {
+	return channel_mode;
 }
