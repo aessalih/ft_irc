@@ -144,9 +144,11 @@ void Server::handleClientMessage(size_t i) {
 	// parse the message
 	std::string msg(buffer);
 	std::vector<std::string> tokens = split(msg);
-	
+	if (tokens.empty())
+		return;
 	std::string cmd = tokens[0];
-	if (!cmd.empty() && cmd[cmd.size() - 1] == '\n') {
+
+	if (!cmd.empty() && cmd[cmd.size() - 1] == '\n') { // check this for segfault
 		cmd.erase(cmd.size() - 1);
 	}	
 
@@ -237,7 +239,7 @@ void Server::handleClientMessage(size_t i) {
 			// check if channel has user limit and is full
 			if (target_channel->get_mode().find('l') != std::string::npos) {
 				int max_clients = target_channel->get_max_clients();
-				const std::vector<Client>& channel_clients = target_channel->get_clients();
+				const std::vector<Client> &channel_clients = target_channel->get_clients();
 				if (max_clients > 0 && static_cast<int>(channel_clients.size()) >= max_clients) {
 					std::string error_msg = "471 " + channel_name + " :Cannot join channel (+l)\n";
 					send(client_fd, error_msg.c_str(), error_msg.length(), 0);
@@ -432,7 +434,7 @@ void Server::handleClientMessage(size_t i) {
 		for (size_t j = 0; j < channel_clients.size(); j++) {
 			if (channel_clients[j].getNickname() == target_nick) {
 				target_found = true;
-				target_client = const_cast<Client*>(&channel_clients[j]);
+				target_client = const_cast<Client*>(&channel_clients[j]); // here 
 				break;
 			}
 		}
@@ -558,7 +560,7 @@ void Server::handleClientMessage(size_t i) {
 		}
 
 		std::string channel_name = tokens[1];
-		Channel* target_channel = NULL;
+		Channel *target_channel = NULL;
 
 		// find the channel
 		for (size_t j = 0; j < channels.size(); j++) {
@@ -576,7 +578,7 @@ void Server::handleClientMessage(size_t i) {
 
 		// check if user is in the channel
 		bool user_in_channel = false;
-		const std::vector<Client>& channel_clients = target_channel->get_clients();
+		const std::vector<Client> &channel_clients = target_channel->get_clients();
 		for (size_t j = 0; j < channel_clients.size(); j++) {
 			if (channel_clients[j] == clients[i - 1]) {
 				user_in_channel = true;
@@ -650,7 +652,7 @@ void Server::handleClientMessage(size_t i) {
 		}
 
 		// find the channel
-		Channel* target_channel = NULL;
+		Channel *target_channel = NULL;
 		for (size_t j = 0; j < channels.size(); j++) {
 			if (channels[j].get_name() == channel_name) {
 				target_channel = &channels[j];
@@ -666,7 +668,7 @@ void Server::handleClientMessage(size_t i) {
 
 		// check if user is in the channel
 		bool user_in_channel = false;
-		const std::vector<Client>& channel_clients = target_channel->get_clients();
+		const std::vector<Client> &channel_clients = target_channel->get_clients();
 		for (size_t j = 0; j < channel_clients.size(); j++) {
 			if (channel_clients[j] == clients[i - 1]) {
 				user_in_channel = true;
