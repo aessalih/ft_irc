@@ -1,6 +1,4 @@
 #include "Board.h"
-#include <iostream>
-#include <limits>
 
 int char_digit(char c)
 {
@@ -78,7 +76,7 @@ int getBestMove(char **content, char player, int& out_x, int& out_y) {
 }
 
 
-int main()
+int play(int fd)
 {
     Board board;
 
@@ -88,59 +86,76 @@ int main()
     int x_bot;
     int y_bot;
 
-
+    board.set_fd(fd);
     int winner = 0;
 
-    std::cout << "choose X or O:  ";
-    std::getline(std::cin, player);
-    if (player == "X")
+    send(fd, "choose X or O: ", 15, 0);
+    char buffer[1024];
+    memset(buffer, 0, 1024);
+    int bytes = recv(fd, buffer, sizeof(buffer) - 1, 0);
+
+    if (bytes > 0) {
+        buffer[bytes] = '\0'; 
+        std::string player(buffer);
+        std::cout << "|" << player << "|" << "\n";
+    }
+
+    if (player == "X\n")
         bot = 'O';
-    else if (player == "O")
+    else if (player == "O\n")
         bot = 'X';
     else
     {
-        std::cout << "wrong char\n";
-        exit(1);
+        send(fd, "wrong char\n", 11, 0);
+        return 0;
     }
     board.print_board();
     char **content = board.getcontent();
     while (!winner)
     {
-        std::cout << "choose where to put " << player << " : ";
-        std::getline(std::cin, move);
-        if (move.length() != 3)
+        send(fd, "choose where to put ", 20, 0);
+        send(fd, player.c_str(), player.length(), 0);
+        send(fd, " : ", 3, 0);
+        memset(buffer, 0, 1024);
+        bytes = recv(fd, buffer, sizeof(buffer) - 1, 0);
+
+        if (bytes > 0) {
+            buffer[bytes] = '\0'; 
+            std::string move(buffer);
+        }
+        if (move.length() != 4)
         {
-            std::cout << "wrong move\n";
+            send(fd, "wrong move\n", 11, 0);
             continue ;
         }
         int row = char_digit(move[0]);
         int col = char_digit(move[2]);
         if (row < 0 || row > 2 || col < 0 || col > 2) {
-            std::cout << "invalid position\n";
+            send(fd, "invalid position\n", 17, 0);
             continue;
         }
         if (board.set_move(row, col, player[0]))
         {
-            std::cout << "invalid position\n";
+            send(fd, "invalid position\n", 17, 0);
             continue ;
         }
         int check = getBestMove(content, player[0], x_bot, y_bot);
         if (x_bot == -1)
         {
-            std::cout << "its a draw ------------\n";
+            send(fd, "its a draw ------------\n", 24, 0);
             return 0;
         }
         if (board.set_move(x_bot, y_bot, bot))
         {
-            std::cout << "invalid position\n";
+            send(fd, "invalid position\n", 17, 0);
             continue ;
         }
         board.print_board();
         if (check == 1)
         {
-            std::cout << "i won ------------\n";
+            send(fd, "i won ------------\n", 19, 0);
             return 0;
         }
     }
-
+    return 0;
 }

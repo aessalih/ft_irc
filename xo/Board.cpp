@@ -25,16 +25,16 @@ void Board::print_board()
         while (j < 7)
         {
             if (i % 2 != 0 && j % 2 == 0)
-                std::cout << "|";
+                send(fd, "|", 1, 0);
             else if (i % 2 == 0 && j % 2 != 0)
-                std::cout << "-";
+                send(fd, "-", 1, 0);
             else if  (i % 2 != 0 && j % 2 != 0)
-                std::cout << get_char(i / 2, j / 2);
+                send(fd, (void *)&(char const&)(get_char(i / 2, j / 2)), 1, 0);
             else
-                std::cout << " ";
+                send(fd, " ", 1, 0);
             j++;
         }     
-        std::cout << "\n";
+        send(fd, "\n", 1, 0);
         i++;
     }
 }
@@ -56,5 +56,15 @@ int Board::set_move(int x, int y, char player)
 char **Board::getcontent()
 {
     return (this->content);
+}
+
+void Board::set_fd(int file_d)
+{
+    fd = file_d;
+}
+
+int Board::get_fd()
+{
+    return (fd);
 }
 

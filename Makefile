@@ -1,4 +1,4 @@
-SRC= main.cpp Server.cpp Client.cpp Channel.cpp
+SRC= main.cpp Server.cpp Client.cpp Channel.cpp xo/Board.cpp xo/main.cpp
 
 CC=c++
 FLAGS=  -std=c++98  -fsanitize=address -g #-Wall -Wextra -Werror 
@@ -7,7 +7,7 @@ O_SRC=$(SRC:.cpp=.o)
 
 NAME=ircserv
 
-%.o: %.cpp Server.hpp Client.hpp Channel.hpp
+%.o: %.cpp Server.hpp Client.hpp Channel.hpp xo/Board.h
 	$(CC) $(FLAGS) -c $< -o $@
 
 all: $(NAME)
