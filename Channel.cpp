@@ -151,6 +151,7 @@ const Client &Channel::getCreator() const {
 	return creator;
 }
 
+
 void Channel::setCreator(const Client &client) {
 	creator = client;
 }
