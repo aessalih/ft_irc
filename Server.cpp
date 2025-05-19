@@ -137,7 +137,6 @@ void Server::handleClientMessage(size_t i) {
 		if (!check_names(clients, i - 1, buffer, client_fd))
 			return ;
 		clients[i - 1].setIsRegestered(true);
-		std::cout << "hello\n";
 		send(client_fd, "You complete your registration\n", 32, 0);
 		return ;
 	}

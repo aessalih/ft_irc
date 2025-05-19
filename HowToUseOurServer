@@ -1,0 +1,8 @@
+--> START SERVER & CLIENTS:
+    Open the terminal and make the source files. run the exec file with right arguments (<port> <serverPassword>). port is a number that other clients can connect with the server from it. the serverPassword is the a password from the choose of the user.
+    you can open new terminal (without closing the old one). run the commond "nc 127.0.0.1 <port>" nc command create new connection with localhost (127.0.0.1) in the port (<port> is the same as the server). and congratulations, now you are connected with the server and you can interact with other clients.
+--> AUTHENTICATION:
+    After connecting with the server, a message will be shown on your prompt at your terminal says that you connected with the server and now you have to enter the server password and you nickname and username as follows:
+    pass <serverPassword>
+    nick <nickname>
+    user <username>
