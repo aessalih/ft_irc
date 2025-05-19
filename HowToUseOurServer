@@ -6,3 +6,58 @@
     pass <serverPassword>
     nick <nickname>
     user <username>
+
+ Available Commands
+
+Below is a list of supported commands for interacting with the IRC server. Replace #channel, user, or other placeholders with the actual channel name, username, or relevant values.
+
+JOIN
+Join a specified channel.
+Syntax: JOIN #channel
+Example: JOIN #sabona
+Description: Connects you to the specified channel, allowing you to participate in discussions.
+
+PRIVMSG
+Send and receive private messages to a channel or a specific client.
+Syntax: PRIVMSG #channel|user "message"
+Examples:
+To a channel: PRIVMSG #sabona Hello, everyone!
+To a user: PRIVMSG alice Hi, how are you?
+Description: Sends a message to either a channel or an individual user.
+
+KICK
+Eject a client from a channel (requires operator privileges).
+Syntax: KICK #channel user
+Example: KICK #sabona bob
+Description: Removes the specified user from the channel.
+
+INVITE
+Invite a client to a channel.
+Syntax: INVITE user #channel
+Example: INVITE alice #sabona
+Description: Sends an invitation to the specified user to join the channel.
+
+TOPIC
+View or change the channel's topic.
+Syntax:
+To view: TOPIC #channel
+To change: TOPIC #channel NEW_TOPIC
+Examples:
+View topic: TOPIC #sabona
+Change topic: TOPIC #sabona Welcome to our community!
+Description: Displays the current topic or updates it to a new one (may require operator privileges to change).
+
+MODE
+Change the channel's mode to configure its settings.
+Syntax: MODE #channel mode
+Supported Modes:
+i: Set/remove Invite-only channel.
+t: Set/remove restrictions on the TOPIC command to channel operators only.
+k: Set/remove the channel key (password).
+o: Give/take channel operator privileges.
+l: Set/remove the user limit for the channel.
+Examples:
+Set invite-only: MODE #sabona +i
+Remove password: MODE #sabona -k
+Grant operator status: MODE #sabona +o alice
+Description: Modifies channel settings to control access, permissions, or behavior (requires operator privileges).
