@@ -7,7 +7,7 @@
     nick <nickname>
     user <username>
 
- Available Commands
+Available Commands
 
 Below is a list of supported commands for interacting with the IRC server. Replace #channel, user, or other placeholders with the actual channel name, username, or relevant values.
 
@@ -15,7 +15,7 @@ Below is a list of supported commands for interacting with the IRC server. Repla
 <Join a specified channel.
 Syntax: JOIN #channel
 Example: JOIN #sabona
-Description: Connects you to the specified channel, allowing you to participate in discussions.>
+Description: Connects you to the specified channel or create it if it doesn't not exist, allowing you to participate in discussions.>
 
 <PRIVMSG>
 <Send and receive private messages to a channel or a specific client.
