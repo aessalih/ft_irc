@@ -11,6 +11,8 @@ To start the IRC server, open a terminal and compile the source files. Then run 
 <port>: The port number clients will use to connect (e.g., 6667).
 <serverPassword>: A custom password chosen by the server owner for authentication.
 
+---
+
 ### 💬 Connect Clients
 
 To connect a client to the server:
@@ -25,6 +27,8 @@ nc 127.0.0.1 <port>
 This uses netcat (nc) to create a connection to the IRC server running locally on 127.0.0.1 (localhost) at the specified <port>.
 
 ✅ Congratulations! You're now connected to the IRC server and can interact with other connected clients.
+
+---
 
 ### 🔐 Authentication
 
@@ -42,12 +46,12 @@ user: Sets your username.
 
 **Once authenticated, you're ready to join channels, send messages, and enjoy the IRC experience.**
 
+---
+
 ### 📜 Available Commands
 
 Below is a list of supported commands for interacting with the IRC server.  
 Replace `#channel`, `user`, or other placeholders with actual names or values.
-
----
 
 #### 🔗 JOIN
 
