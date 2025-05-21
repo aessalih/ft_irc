@@ -19,6 +19,25 @@ int iswinningmove(char** board, char player, int row, int col) {
     return win;
 }
 
+int playerWon(char **content, char player)
+{
+    for (int i = 0; i < 3; ++i)
+        if (content[i][0] == player && content[i][1] == player && content[i][2] == player)
+            return 1;
+
+    for (int j = 0; j < 3; ++j)
+        if (content[0][j] == player && content[1][j] == player && content[2][j] == player)
+            return 1;
+
+    if (content[0][0] == player && content[1][1] == player && content[2][2] == player)
+        return 1;
+
+    if (content[0][2] == player && content[1][1] == player && content[2][0] == player)
+        return 1;
+
+    return 0;
+}
+
 int getBestMove(char **content, char player, int& out_x, int& out_y) {
     char bot;
 
@@ -95,14 +114,14 @@ int play(int fd)
     int bytes = recv(fd, buffer, sizeof(buffer) - 1, 0);
 
     if (bytes > 0) {
-        buffer[bytes] = '\0'; 
-        std::string player(buffer);
+        buffer[bytes - 1] = '\0'; 
+        player = buffer;
         std::cout << "|" << player << "|" << "\n";
     }
 
-    if (player == "X\n")
+    if (player == "X")
         bot = 'O';
-    else if (player == "O\n")
+    else if (player == "O")
         bot = 'X';
     else
     {
@@ -120,10 +139,10 @@ int play(int fd)
         bytes = recv(fd, buffer, sizeof(buffer) - 1, 0);
 
         if (bytes > 0) {
-            buffer[bytes] = '\0'; 
-            std::string move(buffer);
+            buffer[bytes - 1] = '\0'; 
+            move = buffer;
         }
-        if (move.length() != 4)
+        if (move.length() != 3)
         {
             send(fd, "wrong move\n", 11, 0);
             continue ;
@@ -138,6 +157,11 @@ int play(int fd)
         {
             send(fd, "invalid position\n", 17, 0);
             continue ;
+        }
+        if (playerWon(content, player[0]))
+        {
+            send(fd, "you won ------------\n", 24, 0);
+            return 0;
         }
         int check = getBestMove(content, player[0], x_bot, y_bot);
         if (x_bot == -1)
@@ -158,4 +182,14 @@ int play(int fd)
         }
     }
     return 0;
+}
+
+int main(int ac, char **av)
+{
+    if (ac != 3)
+    {
+        std::cout << "wrong number of args\n";
+        return 1;
+    }
+    //still making improuvments
 }
