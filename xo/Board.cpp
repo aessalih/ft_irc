@@ -12,32 +12,31 @@ Board::Board()
 
 Board::~Board()
 {
-
+    delete[] content;
 }
 
-void Board::print_board()
-{
-    int i = 0;
-    int j = 0;
-    while (i < 7)
-    {
-        j =  0;
-        while (j < 7)
-        {
+std::vector<std::string> Board::print_board() {
+    std::vector<std::string> lines;
+
+    for (int i = 0; i < 7; ++i) {
+        std::string line;
+        for (int j = 0; j < 7; ++j) {
             if (i % 2 != 0 && j % 2 == 0)
-                send(fd, "|", 1, 0);
+                line += "|";
             else if (i % 2 == 0 && j % 2 != 0)
-                send(fd, "-", 1, 0);
-            else if  (i % 2 != 0 && j % 2 != 0)
-                send(fd, (void *)&(char const&)(get_char(i / 2, j / 2)), 1, 0);
+                line += "-";
+            else if (i % 2 != 0 && j % 2 != 0)
+                line += get_char(i / 2, j / 2);
             else
-                send(fd, " ", 1, 0);
-            j++;
-        }     
-        send(fd, "\n", 1, 0);
-        i++;
+                line += " ";
+        }
+        lines.push_back(line);
     }
+
+    return lines;
 }
+
+
 
 char Board::get_char(int x, int y)
 {
@@ -66,5 +65,12 @@ void Board::set_fd(int file_d)
 int Board::get_fd()
 {
     return (fd);
+}
+
+std::string Board::get_board() 
+{
+    std::string result;
+   
+    return result;
 }
 
