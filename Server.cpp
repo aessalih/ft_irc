@@ -136,6 +136,7 @@ void Server::handleClientMessage(size_t i) {
 		}
 		if (!check_names(clients, i - 1, buffer, client_fd))
 			return ;
+		std::cout << "Client registered\n";
 		clients[i - 1].setIsRegestered(true);
 		send(client_fd, "You complete your registration\n", 32, 0);
 		return ;
@@ -636,10 +637,6 @@ void Server::handleClientMessage(size_t i) {
 		for (size_t j = 0; j < channel_clients.size(); j++) {
 			send(channel_clients[j].getFd(), topic_msg.c_str(), topic_msg.length(), 0);
 		}
-	}
-	else if (cmd == "PLAY")
-	{
-		play(client_fd);
 	}
 	else if (cmd == "MODE") {
 		if (tokens.size() < 2) {

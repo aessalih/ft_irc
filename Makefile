@@ -1,4 +1,4 @@
-SRC= main.cpp Server.cpp Client.cpp Channel.cpp xo/Board.cpp xo/main.cpp
+SRC= main.cpp Server.cpp Client.cpp Channel.cpp 
 
 CC=c++
 FLAGS=  -std=c++98  -fsanitize=address -g #-Wall -Wextra -Werror 

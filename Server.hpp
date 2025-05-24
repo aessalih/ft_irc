@@ -60,7 +60,6 @@ class Server {
 		int	check_names(std::vector<Client> &clients, size_t i, char *buffer, int fd);
 };
 std::vector<std::string> split(const std::string &s);
-int play(int fd);
 
 #endif
 
