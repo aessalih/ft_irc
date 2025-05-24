@@ -28,7 +28,7 @@ std::vector<std::string> Board::print_board() {
             else if (i % 2 != 0 && j % 2 != 0)
                 line += get_char(i / 2, j / 2);
             else
-                line += " ";
+                line += "=";
         }
         lines.push_back(line);
     }
