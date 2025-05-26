@@ -203,3 +203,21 @@ void Channel::updateModeString() {
 const MODE& Channel::getChannelMode() const {
 	return channel_mode;
 }
+
+const std::vector<Client>& Channel::get_invited_users() const {
+	return invited_users;
+}
+int Channel::get_max_clients() const {
+	return max_client;
+}
+void Channel::add_invited_user(const Client &client) {
+	invited_users.push_back(client);
+}
+void Channel::remove_invited_user(const Client &client){
+    for (size_t i = 0; i < invited_users.size(); i++) {
+        if (invited_users[i] == client) {
+            invited_users.erase(invited_users.begin() + i);
+            break;
+        }
+    }
+}

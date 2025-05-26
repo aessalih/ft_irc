@@ -83,17 +83,10 @@ class Channel {
         void updateModeString();
         const MODE& getChannelMode() const;
 
-        const std::vector<Client>& get_invited_users() const { return invited_users; }
-        int get_max_clients() const { return max_client; }
-        void add_invited_user(const Client& client) { invited_users.push_back(client); }
-        void remove_invited_user(const Client& client) {
-            for (size_t i = 0; i < invited_users.size(); i++) {
-                if (invited_users[i] == client) {
-                    invited_users.erase(invited_users.begin() + i);
-                    break;
-                }
-            }
-        }
+         const std::vector<Client>& get_invited_users() const;
+        int get_max_clients() const;
+        void add_invited_user(const Client &client);
+        void remove_invited_user(const Client &client);
 };
 
 #endif
