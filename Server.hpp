@@ -1,6 +1,10 @@
 #ifndef _SERVER_HPP_
 # define _SERVER_HPP_
 
+# define RUNNING "\033[1;33mSERVER RUNNING... \033[0m"
+# define LAUNCHED "\033[1;32mSERVER LAUNCHED \033[0m"
+# define ERROR "\033[1;31mSERVER FAILED... \033[0m"
+
 # include <iostream>
 # include <sys/types.h>
 # include <unistd.h>
@@ -30,14 +34,6 @@ class Server {
 		char	buffer[1024];
 		std::string	password;
 		std::vector<Channel> channels;
-		// fctnl();
-		// poll();
-		// 10 server
-		// 5p => channel 1 
-		// 1 => 1
-		// privmsg #chanl ashdflasjkfjas flkasj fdkasjdfalk
-		// privmsg azedine lkasjdflkasjf
-		// std::vector<int> channel_client
 		std::vector<Client>	clients;
 		std::vector<struct pollfd> fds;
 

@@ -40,29 +40,33 @@ Server::~Server() {
 int	Server::init() {
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd == -1) {
-		std::cerr << "SOCKET FUNCTION FAILS\n";
+		std::cerr << ERROR << std::endl;
+		std::cerr << "\033[1;31mSOCKET FUNCTION FAILS\033[0m\n";
 		return -1;
 	}
 	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
-		std::cerr << "SET SOCKET OPRION FAILS\n";
+		std::cerr << ERROR << std::endl;
+		std::cerr << "\033[1;31mSET SOCKET OPRION FAILS\033[0m\n";
 		return -1;
 	}
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons(this->port);
 	if (bind(sockfd, (struct sockaddr*)&address, addrlen) == -1) {
-		std::cerr << "BIND FUNCTION FAILS\n";
+		std::cerr << ERROR << std::endl;
+		std::cerr << "\033[1;31mBIND FUNCTION FAILS\033[0m\n";
 		return -1;
 	}
 	if (listen(sockfd, 3) == -1) {
-		std::cerr << "LISTEN FAILS\n";
+		std::cerr << ERROR << std::endl;
+		std::cerr << "\033[1;31mLISTEN FAILS\033[0m\n";
 		return -1;
 	}
 	server_sockfd.fd = sockfd;
 	server_sockfd.events = POLLIN;
 	server_sockfd.revents = 0;
 	fds.push_back(server_sockfd);
-	std::cout << "SERVER START ON PORT : " << this->port << std::endl;
+	std::cout << LAUNCHED << "\033[1;32mON PORT: " << this->port << "\033[0m" << std::endl;
 	return 0;
 }
 
@@ -70,7 +74,7 @@ int Server::run() {
 	while (true) {
 		int	poll_count = poll(fds.data(), fds.size(), -1);
 		if (poll_count < 0) {
-			std::cerr << "POLL FUNCTION FAILS\n";
+			std::cerr << "\033[1;31mPOLL FUNCTION FAILS\033[0m\n";
 			return -1;
 		}
 		for (size_t i = 0; i < fds.size(); i++) {
@@ -99,7 +103,7 @@ int	Server::handleNewClients()
 
 	accept_fd = accept(sockfd, (struct sockaddr*)&clientAddr, (socklen_t *)&addrlen);
 	if (accept_fd < 0) {
-		std::cerr << "ERROR ACCEPTING CONNECTION\n";
+		std::cerr << "\033[1;31mERROR ACCEPTING CONNECTION\033[0m\n";
 		return -1;
 	}
 	newFd.fd = accept_fd;
@@ -107,8 +111,14 @@ int	Server::handleNewClients()
 	newFd.revents = 0;
 	fds.push_back(newFd);
 	send(newFd.fd,
-		"you're connected to the server. To complete your registration, enter the server password and add your username and nickname!\n",
-		126, 0);
+		"\033[1;33mYOU ENTERED THE SERVER\033[0m\n\
+\033[1;33mTO COMPLETE YOUR REGISTRATION, ENTER THE FOLLOWING:\033[0m\n\
+\t➤ pass <server password>\n\
+\t➤ user <your username>\n\
+\t➤ nick <your nickname>\n\n\
+Note: Nickname must be unique and must NOT contain \
+any of these characters: ' ', ',', '*', '?', '!', '@'\n",
+		284, 0);
 	Client	client(newFd.fd);
 	clients.push_back(client);
 	return (1);
@@ -136,9 +146,8 @@ void Server::handleClientMessage(size_t i) {
 		}
 		if (!check_names(clients, i - 1, buffer, client_fd))
 			return ;
-		std::cout << "Client registered\n";
 		clients[i - 1].setIsRegestered(true);
-		send(client_fd, "You complete your registration\n", 32, 0);
+		send(client_fd, "\033[1;32mREGISTRATION DONE\033[0m\n", 30, 0);
 		return ;
 	}
 
@@ -170,16 +179,25 @@ void Server::handleClientMessage(size_t i) {
 
 int	Server::check_password(char *buffer, int fd) {
 	char *pass = strtok(buffer, " ");
-	std::string	password;
+	std::string	password = pass;
 
-	if (strcmp(pass, "pass") != 0)
+	password.erase(password.find_last_not_of("\n") + 1);
+	if (password != "pass")
 		return 0;
 	pass = strtok(NULL, " ");
+	if (!pass) {
+		send(fd, "\033[1;31mWRONG PASSWORD!\033[0m\n", 28, 0);
+		return 0;
+	}
 	password = pass;
 	password.erase(password.find_last_not_of("\n") + 1);
+	if (password.empty()) {
+		send(fd, "\033[1;31mWRONG PASSWORD!\033[0m\n", 28, 0);
+		return 0;
+	}
 	if (password == this->password)
 		return 1;
-	send(fd, "Enter server password: pass <password>\n", 40, 0);
+	send(fd, "\033[1;31mWRONG PASSWORD!\033[0m\n", 28, 0);
 	return 0;
 }
 
@@ -192,18 +210,18 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 	if (name == "nick") {
 		token = strtok(NULL, " ");
 		if (!token) {
-			send(fd, "You have to enter the right nickname(4-16 character)\n", 54, 0);
+			send(fd, "\033[1;31mENTER A VALID NICKNAME(4-16 PRINTABLE CHARACTER)\033[0m\n", 61, 0);
 			return 0;
 		}
 		name = token;
 		name.erase(name.find_last_not_of("\n") + 1);
-		if (name.length() < 4 && name.length() > 16) {
-			send(fd, "You have to enter the right nickname(4-16 character)\n", 54, 0);
+		if (name.length() < 4 || name.length() > 16) {
+			send(fd, "\033[1;31mENTER A VALID NICKNAME(4-16 PRINTABLE CHARACTER)\033[0m\n", 61, 0);
 			return 0;
 		}
 		while (j < clients.size()) {
 			if (clients[j].getNickname() == name) {
-				send(fd, "This nickname is used!\n", 24, 0);
+				send(fd, "\033[1;31mTHIS NICKNAME IS ALREADY IN USE!\033[0m\n", 45, 0);
 				return 0;
 			}
 			j++;
@@ -216,13 +234,13 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 	else if (name == "user") {
 		token = strtok(NULL, " ");
 		if (!token) {
-			send(fd, "You have to enter the right username(4-16 character)\n", 54, 0);
+			send(fd, "\033[1;31mENTER A VALID USERNAME(4-16 PRINTABLE CHARACTER)\033[0m\n", 61, 0);
 			return 0;
 		}
 		name = token;
 		name.erase(name.find_last_not_of("\n") + 1);
-		if (name.length() < 4 && name.length() > 16) {
-			send(fd, "You have to enter the right username(4-16 character)\n", 54, 0);
+		if (name.length() < 4 || name.length() > 16) {
+			send(fd, "\033[1;31mENTER A VALID USERNAME(4-16 PRINTABLE CHARACTER)\033[0m\n", 61, 0);
 			return 0;
 		}
 		clients[i].setUsername(name);
