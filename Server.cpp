@@ -117,8 +117,8 @@ int	Server::handleNewClients()
 \t➤ user <your username>\n\
 \t➤ nick <your nickname>\n\n\
 Note: Nickname must be unique and must NOT contain \
-any of these characters: ' ', ',', '*', '?', '!', '@'\n",
-		284, 0);
+any of these characters: ' ', '#', ',', '*', '?', '!', '@'\n",
+		289, 0);
 	Client	client(newFd.fd);
 	clients.push_back(client);
 	return (1);
@@ -180,51 +180,62 @@ void Server::handleClientMessage(size_t i) {
 int	Server::check_password(char *buffer, int fd) {
 	char *pass = strtok(buffer, " ");
 	std::string	password = pass;
+	std::string response;
 
-	password.erase(password.find_last_not_of("\n") + 1);
+
+	password.erase(password.find_last_not_of("\r\n") + 1);
 	if (password != "pass")
 		return 0;
 	pass = strtok(NULL, " ");
 	if (!pass) {
-		send(fd, "\033[1;31mWRONG PASSWORD!\033[0m\n", 28, 0);
+		response = ":azirc 461 pass :need more params\r\n";
+		send(fd, response.c_str() , response.size(), 0);
 		return 0;
 	}
 	password = pass;
 	password.erase(password.find_last_not_of("\n") + 1);
 	if (password.empty()) {
-		send(fd, "\033[1;31mWRONG PASSWORD!\033[0m\n", 28, 0);
+		response = ":azirc 461 pass :need more params\r\n";
+		send(fd, response.c_str() , response.size(), 0);
 		return 0;
 	}
 	if (password == this->password)
 		return 1;
-	send(fd, "\033[1;31mWRONG PASSWORD!\033[0m\n", 28, 0);
+	response = ":azirc 461 pass :need more params\r\n";
+	send(fd, response.c_str() , response.size(), 0);
 	return 0;
 }
 
 int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, int fd) {
+	std::string newBuffer = buffer;
 	char *token = strtok(buffer, " ");
 	size_t	j = 0;
+	std::string response;
 
 	std::string name = token;
-	name.erase(name.find_last_not_of("\n") + 1);
+	name.erase(name.find_last_not_of("\r\n") + 1);
 	if (name == "nick") {
 		token = strtok(NULL, " ");
 		if (!token) {
-			send(fd, "\033[1;31mENTER A VALID NICKNAME(4-16 PRINTABLE CHARACTER)\033[0m\n", 61, 0);
+			response = ":irc 431 nick :no nickname given\r\n";
+			send(fd, response.c_str(), response.size(), 0);
 			return 0;
 		}
 		name = token;
-		name.erase(name.find_last_not_of("\n") + 1);
-		if (name.length() < 4 || name.length() > 16) {
-			send(fd, "\033[1;31mENTER A VALID NICKNAME(4-16 PRINTABLE CHARACTER)\033[0m\n", 61, 0);
-			return 0;
-		}
+		name.erase(name.find_last_not_of("\r\n") + 1);
 		while (j < clients.size()) {
 			if (clients[j].getNickname() == name) {
-				send(fd, "\033[1;31mTHIS NICKNAME IS ALREADY IN USE!\033[0m\n", 45, 0);
+				response = ":irc 433 nick :nickname is already in use\r\n";
+				send(fd, response.c_str(), response.size(), 0);
 				return 0;
 			}
 			j++;
+		}
+		if (name.find_first_of(" #,*?!@") != std::string::npos) {
+			response = ":irc 432 * "+ name +" : :Erroneous nickname\r\n";
+			send(fd, response.c_str(), response.size(), 0);
+			////////////////////////////////////////////////////////////
+			return 0;
 		}
 		clients[i].setNickname(name);
 		if (!clients[i].getUsername().empty())
@@ -232,6 +243,9 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 		return 0;
 	}
 	else if (name == "user") {
+		if (split(newBuffer).size() != 4) {
+			response = ":irc 461 user : invalid username\r\n";
+		}
 		token = strtok(NULL, " ");
 		if (!token) {
 			send(fd, "\033[1;31mENTER A VALID USERNAME(4-16 PRINTABLE CHARACTER)\033[0m\n", 61, 0);
@@ -269,21 +283,22 @@ std::vector<std::string> split(const std::string &s){
 	std::istringstream tokenStream(s);
 	bool inWord = false;
 	std::string currentWord;
+	int flag = 0;
 
 	for (size_t i = 0; i < s.length(); i++) {
-		if (s[i] == ' ' || s[i] == '\t' || s[i] == '\n') {
-			if (inWord) {
-				tokens.push_back(currentWord);
-				currentWord.clear();
-				inWord = false;
-			}
+		if (flag == 0 && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n')) {
+			tokens.push_back(currentWord);
+			currentWord.clear();
+			inWord = false;
 		} else {
+			if (!inWord && s[i] == ':')
+				flag = 1;
 			currentWord += s[i];
 			inWord = true;
 		}
 	}
 
-	if (inWord && !currentWord.empty()) {
+	if (!currentWord.empty()) {
 		tokens.push_back(currentWord);
 	}
 
