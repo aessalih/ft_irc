@@ -112,37 +112,37 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
         target_channel->add_client(clients[i - 1]);
         
         // send JOIN message to all clients in channel
-        std::string join_msg = ":" + clients[i - 1].getNickname() + " JOIN " + channel_name + "\n";
+        std::string join_msg = ": irc " + clients[i - 1].getNickname() + " JOIN " + channel_name + "\r\n";
         for (size_t j = 0; j < channel_clients.size(); j++) {
             send(channel_clients[j].getFd(), join_msg.c_str(), join_msg.length(), 0);
         }
         
         // send RPL_TOPIC if exists
         if (!target_channel->get_topic().empty()) {
-            std::string topic_msg = "332 " + clients[i - 1].getNickname() + " " + channel_name + " :" + target_channel->get_topic() + "\n";
+            std::string topic_msg = ": irc 332 " + clients[i - 1].getNickname() + " " + channel_name + " :" + target_channel->get_topic() + "\r\n";
             send(client_fd, topic_msg.c_str(), topic_msg.length(), 0);
         }
 
         // send RPL_NAMREPLY
-        std::string names_msg = "353 " + clients[i - 1].getNickname() + " = " + channel_name + " :";
+        std::string names_msg = ": irc 353 " + clients[i - 1].getNickname() + " = " + channel_name + " :";
         const std::vector<Client> &clients_list = target_channel->get_clients();
         for (size_t j = 0; j < clients_list.size(); j++) {
             if (j != 0)
                 names_msg += " ";
             names_msg += clients_list[j].getNickname();
         }
-        names_msg += "\n";
+        names_msg += "\r\n";
         send(client_fd, names_msg.c_str(), names_msg.length(), 0);
 
         // send RPL_ENDOFNAMES
-        std::string end_names_msg = "366 " + clients[i - 1].getNickname() + " " + channel_name + " :End of /NAMES list\n";
+        std::string end_names_msg = ": irc 366 " + clients[i - 1].getNickname() + " " + channel_name + " :End of /NAMES list\r\n";
         send(client_fd, end_names_msg.c_str(), end_names_msg.length(), 0);
     }
 }
 
 void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::string>& tokens) {
     if (tokens.size() < 3) {
-        std::string error_msg = "461 PRIVMSG :Not enough parameters\n";
+        std::string error_msg = ": irc 461 PRIVMSG :Not enough parameters\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
