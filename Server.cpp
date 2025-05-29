@@ -110,15 +110,6 @@ int	Server::handleNewClients()
 	newFd.events = POLLIN;
 	newFd.revents = 0;
 	fds.push_back(newFd);
-	send(newFd.fd,
-		"\033[1;33mYOU ENTERED THE SERVER\033[0m\n\
-\033[1;33mTO COMPLETE YOUR REGISTRATION, ENTER THE FOLLOWING:\033[0m\n\
-\t➤ pass <server password>\n\
-\t➤ user <your username>\n\
-\t➤ nick <your nickname>\n\n\
-Note: Nickname must be unique and must NOT contain \
-any of these characters: ' ', '#', ',', '*', '?', '!', '@'\n",
-		289, 0);
 	Client	client(newFd.fd);
 	clients.push_back(client);
 	return (1);
@@ -136,6 +127,7 @@ void Server::handleClientMessage(size_t i) {
 		return ;
 	}
 	// check if client is registered
+	std::cout << buffer;
 	if (clients[i - 1].getIsRegistered() == false) {
 		if (clients[i - 1].getHavePass() == false) {
 			if (check_password(buffer, client_fd)) {
@@ -147,8 +139,12 @@ void Server::handleClientMessage(size_t i) {
 		if (!check_names(clients, i - 1, buffer, client_fd))
 			return ;
 		clients[i - 1].setIsRegestered(true);
-		send(client_fd, "\033[1;32mREGISTRATION DONE\033[0m\n", 30, 0);
+		std::string msg = ":irc 001 " + clients[i - 1].getNickname() + " :Welcome to IRC\r\n";
+		send(client_fd, msg.c_str(), msg.size(), 0);
 		return ;
+	}
+	for (int i = 0; i < clients.size(); i++) {
+		std::cout << "client" << i << " = " << clients[i].getNickname() << std::endl;
 	}
 
 	// parse the message
@@ -157,7 +153,7 @@ void Server::handleClientMessage(size_t i) {
 	if (tokens.empty())
 		return;
 	std::string cmd = tokens[0];
- 	if (cmd == "JOIN") {
+	if (cmd == "JOIN") {
         handleJoin(i, client_fd, tokens);
     }
     else if (cmd == "PRIVMSG") {
@@ -176,16 +172,15 @@ void Server::handleClientMessage(size_t i) {
         handleMode(i, client_fd, tokens);
     }
 }
-
+// :PASS aksjdlq weiooiuda
 int	Server::check_password(char *buffer, int fd) {
 	char *pass = strtok(buffer, " ");
 	std::string	password = pass;
 	std::string response;
-
-
+	
 	password.erase(password.find_last_not_of("\r\n") + 1);
-	if (password != "pass")
-		return 0;
+	if (password != "PASS")
+	return 0;
 	pass = strtok(NULL, " ");
 	if (!pass) {
 		response = ":azirc 461 pass :need more params\r\n";
@@ -193,7 +188,7 @@ int	Server::check_password(char *buffer, int fd) {
 		return 0;
 	}
 	password = pass;
-	password.erase(password.find_last_not_of("\n") + 1);
+	password.erase(password.find_last_not_of("\r\n") + 1);
 	if (password.empty()) {
 		response = ":azirc 461 pass :need more params\r\n";
 		send(fd, response.c_str() , response.size(), 0);
@@ -214,7 +209,7 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 
 	std::string name = token;
 	name.erase(name.find_last_not_of("\r\n") + 1);
-	if (name == "nick") {
+	if (name == "NICK") {
 		token = strtok(NULL, " ");
 		if (!token) {
 			response = ":irc 431 nick :no nickname given\r\n";
@@ -242,8 +237,8 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 			return 1;
 		return 0;
 	}
-	else if (name == "user") {
-		if (split(newBuffer).size() != 4) {
+	else if (name == "USER") {
+		if (split1(newBuffer).size() != 4) {
 			response = ":irc 461 user : invalid username\r\n";
 		}
 		token = strtok(NULL, " ");
@@ -275,6 +270,34 @@ int	Server::parse_port(char *av) {
 			return -1;
 	}
 	return (atoi(av));
+}
+
+std::vector<std::string> split1(const std::string &s){
+	std::vector<std::string> tokens;
+	std::string token;
+	std::istringstream tokenStream(s);
+	bool inWord = false;
+	std::string currentWord;
+	int flag = 0;
+
+	for (size_t i = 0; i < s.length(); i++) {
+		if (flag == 0 && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n')) {
+			tokens.push_back(currentWord);
+			currentWord.clear();
+			inWord = false;
+		} else {
+			if (!inWord && s[i] == ':')
+				flag = 1;
+			currentWord += s[i];
+			inWord = true;
+		}
+	}
+
+	if (!currentWord.empty()) {
+		tokens.push_back(currentWord);
+	}
+
+	return tokens;
 }
 
 std::vector<std::string> split(const std::string &s){

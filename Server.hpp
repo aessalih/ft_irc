@@ -64,6 +64,7 @@ class Server {
 
 };
 std::vector<std::string> split(const std::string &s);
+std::vector<std::string> split1(const std::string &s);
 
 #endif
 
