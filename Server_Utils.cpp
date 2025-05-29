@@ -2,7 +2,7 @@
 
 void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>& tokens) {
     if (tokens.size() < 2) {
-        std::string error_msg = "461 JOIN :Not enough parameters\n";
+        std::string error_msg = ": irc 461 JOIN :Not enough parameters\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -17,8 +17,8 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
         key = tokens[2];
 
     // validate channel name
-    if (channel_name[0] != '#') {
-        std::string error_msg = "403 " + channel_name + " :No such channel\n";
+    if (channel_name[0] != '#' && channel_name[0] != '@') {
+        std::string error_msg = ": irc 403 " + channel_name + " :No such channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -60,7 +60,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
         }
         
         if (channel_key != -1 && (key.empty() || channel_key != provided_key)) {
-            std::string error_msg = "475 " + channel_name + " :Cannot join channel (+k)\n";
+            std::string error_msg = ": irc 475 " + channel_name + " :Cannot join channel (+k)\r\n";
             send(client_fd, error_msg.c_str(), error_msg.length(), 0);
             return;
         }
@@ -76,7 +76,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
                 }
             }
             if (!is_invited) {
-                std::string error_msg = "473 " + channel_name + " :Cannot join channel (+i)\n";
+                std::string error_msg = ": irc 473 " + channel_name + " :Cannot join channel (+i)\r\n";
                 send(client_fd, error_msg.c_str(), error_msg.length(), 0);
                 return;
             }
@@ -89,7 +89,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
             int max_clients = target_channel->get_max_clients();
             const std::vector<Client> &channel_clients = target_channel->get_clients();
             if (max_clients > 0 && static_cast<int>(channel_clients.size()) >= max_clients) {
-                std::string error_msg = "471 " + channel_name + " :Cannot join channel (+l)\n";
+                std::string error_msg = ": irc 471 " + channel_name + " :Cannot join channel (+l)\r\n";
                 send(client_fd, error_msg.c_str(), error_msg.length(), 0);
                 return;
             }
