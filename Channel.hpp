@@ -11,6 +11,7 @@ typedef struct mode {
     int k;  // channel key
     int o;  // operator privilege
     int l;  // user limit
+    int m;  // moderated channel
 } MODE;
 
 class Channel {

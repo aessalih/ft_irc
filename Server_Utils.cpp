@@ -591,6 +591,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
     // parse mode change
     std::string mode_str = tokens[2];
     if (mode_str.length() < 2 || (mode_str[0] != '+' && mode_str[0] != '-')) {
+        std::cout << "i was here\n";
         std::string error_msg = ":irc 472 " + clients[i - 1].getNickname() + " " + mode_str + " :is unknown mode char to me\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
@@ -687,6 +688,9 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
                 target_channel->removeUserLimit();
             }
             target_channel->setMode('l', value);
+            break;
+        case 'm':
+            target_channel->setMode('m', value);
             break;
         default:
             std::string error_msg = ":irc 472 " + clients[i - 1].getNickname() + " " + std::string(1, mode_char) + " :is unknown mode char to me\r\n";

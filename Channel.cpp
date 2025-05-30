@@ -7,6 +7,7 @@ Channel::Channel() : name(""), key(-1), topic(""), mode(""), current_clients(0),
 	channel_mode.k = -1;
 	channel_mode.o = -1;
 	channel_mode.l = -1;
+	channel_mode.m = -1;
 }
 
 Channel::Channel(std::string name, int key) : name(name), key(key), topic(""), mode(""), current_clients(0), max_client(-1),
@@ -16,6 +17,7 @@ Channel::Channel(std::string name, int key) : name(name), key(key), topic(""), m
 	channel_mode.k = -1;
 	channel_mode.o = -1;
 	channel_mode.l = -1;
+	channel_mode.m = -1;
 }
 
 Channel::Channel(const Channel &other) : name(other.name), key(other.key), topic(other.topic), 
@@ -176,6 +178,9 @@ void Channel::setMode(char mode, int value) {
 		case 'l':
 			channel_mode.l = value;
 			break;
+		case 'm':
+			channel_mode.m = value;
+			break;
 	}
 	updateModeString();
 }
@@ -187,6 +192,7 @@ int Channel::getMode(char mode) const {
 		case 'k': return channel_mode.k;
 		case 'o': return channel_mode.o;
 		case 'l': return channel_mode.l;
+		case 'm': return channel_mode.m;
 		default: return -1;
 	}
 }
@@ -198,6 +204,7 @@ void Channel::updateModeString() {
 	if (channel_mode.k == 1) mode += "+k";
 	if (channel_mode.o == 1) mode += "+o";
 	if (channel_mode.l == 1) mode += "+l";
+	if (channel_mode.m == 1) mode += "+m";
 }
 
 const MODE& Channel::getChannelMode() const {
