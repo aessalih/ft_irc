@@ -88,6 +88,7 @@ int Server::run() {
 				std::cout << "Client disconnected (fd: " << fds[i].fd << ")\n";
 				close(fds[i].fd);
 				fds.erase(fds.begin() + i);
+				clients.erase(clients.begin() + i - 1);
 				i--;
 			}
 		}
@@ -124,6 +125,7 @@ void Server::handleClientMessage(size_t i) {
 		std::cout << "Client disconnected (fd : " << client_fd << ")\n";
 		close(client_fd);
 		fds.erase(fds.begin() + i);
+		clients.erase(clients.begin() + i - 1);
 		return ;
 	}
 	// check if client is registered
