@@ -66,11 +66,11 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
         }
 
         // check if channel is invite-only and user is not invited
-        if (target_channel->get_mode().find('i') != std::string::npos) {
+        if (target_channel->getMode('i') == 1) {
             bool is_invited = false;
             const std::vector<Client> &invited_users = target_channel->get_invited_users();
             for (size_t j = 0; j < invited_users.size(); j++) {
-                if (invited_users[j] == clients[i - 1]) {
+                if (invited_users[j].getFd() == clients[i - 1].getFd()) {
                     is_invited = true;
                     break;
                 }
@@ -85,7 +85,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
         }
 
         // check if channel has user limit and is full
-        if (target_channel->get_mode().find('l') != std::string::npos) {
+        if (target_channel->getMode('l') == 1) {
             int max_clients = target_channel->get_max_clients();
             const std::vector<Client> &channel_clients = target_channel->get_clients();
             if (max_clients > 0 && static_cast<int>(channel_clients.size()) >= max_clients) {
@@ -98,7 +98,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
         // check if user is already in the channel
         const std::vector<Client> &channel_clients = target_channel->get_clients();
         for (size_t j = 0; j < channel_clients.size(); j++) {
-            if (channel_clients[j].getNickname() == clients[i - 1].getNickname()) {
+            if (channel_clients[j].getFd() == clients[i - 1].getFd()) {
                 // user is already in the channel, just send them the topic if it exists
                 if (!target_channel->get_topic().empty()) {
                     std::string topic_msg = ":irc 332 " + clients[i - 1].getNickname() + " " + channel_name + " :" + target_channel->get_topic() + "\r\n";
@@ -116,8 +116,6 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
         for (size_t j = 0; j < channel_clients.size(); j++) {
             send(channel_clients[j].getFd(), join_msg.c_str(), join_msg.length(), 0);
         }
-        // Also send to the joining client
-        send(client_fd, join_msg.c_str(), join_msg.length(), 0);
         
         // send RPL_TOPIC if exists
         if (!target_channel->get_topic().empty()) {
@@ -132,7 +130,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
             if (j != 0)
                 names_msg += " ";
             // Add @ prefix for operators and creator
-            if (target_channel->isOperator(clients_list[j]) || target_channel->getCreator() == clients_list[j])
+            if (target_channel->isOperator(clients_list[j]) || target_channel->getCreator().getFd() == clients_list[j].getFd())
                 names_msg += "@";
             names_msg += clients_list[j].getNickname();
         }
@@ -172,6 +170,13 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
         message = message.substr(1);
     }
 
+    // Check if message is empty after processing
+    if (message.empty()) {
+        std::string error_msg = ":irc 412 " + clients[i - 1].getNickname() + " :No text to send\r\n";
+        send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+        return;
+    }
+
     // check if target is a channel
     if (target[0] == '#' || target[0] == '&') {
         // find the channel
@@ -193,7 +198,7 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
         bool is_in_channel = false;
         const std::vector<Client> &channel_clients = target_channel->get_clients();
         for (size_t j = 0; j < channel_clients.size(); j++) {
-            if (channel_clients[j] == clients[i - 1]) {
+            if (channel_clients[j].getFd() == clients[i - 1].getFd()) {
                 is_in_channel = true;
                 break;
             }
@@ -205,10 +210,18 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
             return;
         }
 
+        // Check if channel is moderated and user is not an operator
+        if (target_channel->getMode('m') == 1 && 
+            !target_channel->isOperator(clients[i - 1])) {
+            std::string error_msg = ":irc 404 " + clients[i - 1].getNickname() + " " + target + " :Cannot send to channel (+m)\r\n";
+            send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+            return;
+        }
+
         // send message to all clients in channel
         std::string privmsg;
         // Add @ prefix if sender is operator or creator
-        if (target_channel->isOperator(clients[i - 1]) || target_channel->getCreator() == clients[i - 1])
+        if (target_channel->isOperator(clients[i - 1]) || target_channel->getCreator().getFd() == clients[i - 1].getFd())
             privmsg = ":" + std::string("@") + clients[i - 1].getNickname() + "!~" + clients[i - 1].getUsername() + "@localhost PRIVMSG " + target + " :";
         else
             privmsg = ":" + clients[i - 1].getNickname() + "!~" + clients[i - 1].getUsername() + "@localhost PRIVMSG " + target + " :";
@@ -426,7 +439,7 @@ void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string
 
 void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>& tokens) {
     if (tokens.size() < 2) {
-        std::string error_msg = "461 TOPIC :Not enough parameters\n";
+        std::string error_msg = ":irc 461 " + clients[i - 1].getNickname() + " TOPIC :Not enough parameters\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -443,7 +456,7 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
     }
 
     if (!target_channel) {
-        std::string error_msg = "403 " + channel_name + " :No such channel\n";
+        std::string error_msg = ":irc 403 " + clients[i - 1].getNickname() + " " + channel_name + " :No such channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -452,14 +465,14 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
     bool user_in_channel = false;
     const std::vector<Client> &channel_clients = target_channel->get_clients();
     for (size_t j = 0; j < channel_clients.size(); j++) {
-        if (channel_clients[j] == clients[i - 1]) {
+        if (channel_clients[j].getFd() == clients[i - 1].getFd()) {
             user_in_channel = true;
             break;
         }
     }
 
     if (!user_in_channel) {
-        std::string error_msg = "442 " + channel_name + " :You're not on that channel\n";
+        std::string error_msg = ":irc 442 " + clients[i - 1].getNickname() + " " + channel_name + " :You're not on that channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -468,19 +481,21 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
     if (tokens.size() == 2) {
         std::string topic = target_channel->get_topic();
         if (topic.empty()) {
-            std::string msg = "331 " + clients[i - 1].getNickname() + " " + channel_name + " :No topic is set\n";
+            std::string msg = ":irc 331 " + clients[i - 1].getNickname() + " " + channel_name + " :No topic is set\r\n";
             send(client_fd, msg.c_str(), msg.length(), 0);
         }
         else {
-            std::string msg = "332 " + clients[i - 1].getNickname() + " " + channel_name + " :" + topic + "\n";
+            std::string msg = ":irc 332 " + clients[i - 1].getNickname() + " " + channel_name + " :" + topic + "\r\n";
             send(client_fd, msg.c_str(), msg.length(), 0);
         }
         return;
     }
 
-    // if trying to change topic, check if user is creator or operator
-    if (target_channel->getCreator() != clients[i - 1] && !target_channel->isOperator(clients[i - 1])) {
-        std::string error_msg = "482 " + channel_name + " :You're not channel operator\n";
+    // if trying to change topic, check if user has permission
+    if (target_channel->getMode('t') == 1 && 
+        !target_channel->isOperator(clients[i - 1]) && 
+        target_channel->getCreator().getFd() != clients[i - 1].getFd()) {
+        std::string error_msg = ":irc 482 " + clients[i - 1].getNickname() + " " + channel_name + " :You're not channel operator\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -501,12 +516,17 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
         new_topic.erase(new_topic.size() - 1);
     }
 
+    // If topic is empty or just whitespace, clear the topic
+    if (new_topic.empty() || new_topic.find_first_not_of(" \t\r\n") == std::string::npos) {
+        new_topic = "";
+    }
+
     target_channel->set_topic(new_topic);
     
     // notify all channel members of topic change
     std::string topic_msg;
     // Add @ prefix if topic setter is operator or creator
-    if (target_channel->isOperator(clients[i - 1]) || target_channel->getCreator() == clients[i - 1])
+    if (target_channel->isOperator(clients[i - 1]) || target_channel->getCreator().getFd() == clients[i - 1].getFd())
         topic_msg = ":" + std::string("@") + clients[i - 1].getNickname() + " TOPIC " + channel_name + " :" + new_topic;
     else
         topic_msg = ":" + clients[i - 1].getNickname() + " TOPIC " + channel_name + " :" + new_topic;
@@ -518,14 +538,14 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
 
 void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>& tokens) {
     if (tokens.size() < 2) {
-        std::string error_msg = "461 MODE :Not enough parameters\n";
+        std::string error_msg = ":irc 461 " + clients[i - 1].getNickname() + " MODE :Not enough parameters\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
 
     std::string channel_name = tokens[1];
-    if (channel_name[0] != '#') {
-        std::string error_msg = "403 " + channel_name + " :No such channel\n";
+    if (channel_name[0] != '#' && channel_name[0] != '&') {
+        std::string error_msg = ":irc 403 " + clients[i - 1].getNickname() + " " + channel_name + " :No such channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -540,7 +560,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
     }
 
     if (!target_channel) {
-        std::string error_msg = "403 " + channel_name + " :No such channel\n";
+        std::string error_msg = ":irc 403 " + clients[i - 1].getNickname() + " " + channel_name + " :No such channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -549,21 +569,21 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
     bool user_in_channel = false;
     const std::vector<Client> &channel_clients = target_channel->get_clients();
     for (size_t j = 0; j < channel_clients.size(); j++) {
-        if (channel_clients[j] == clients[i - 1]) {
+        if (channel_clients[j].getFd() == clients[i - 1].getFd()) {
             user_in_channel = true;
             break;
         }
     }
 
     if (!user_in_channel) {
-        std::string error_msg = "442 " + channel_name + " :You're not on that channel\n";
+        std::string error_msg = ":irc 442 " + clients[i - 1].getNickname() + " " + channel_name + " :You're not on that channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
 
     // if no mode change requested, show current modes
     if (tokens.size() == 2) {
-        std::string mode_msg = "324 " + clients[i - 1].getNickname() + " " + channel_name + " " + target_channel->get_mode() + "\n";
+        std::string mode_msg = ":irc 324 " + clients[i - 1].getNickname() + " " + channel_name + " " + target_channel->get_mode() + "\r\n";
         send(client_fd, mode_msg.c_str(), mode_msg.length(), 0);
         return;
     }
@@ -571,7 +591,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
     // parse mode change
     std::string mode_str = tokens[2];
     if (mode_str.length() < 2 || (mode_str[0] != '+' && mode_str[0] != '-')) {
-        std::string error_msg = "472 " + mode_str + " :is unknown mode char to me\n";
+        std::string error_msg = ":irc 472 " + clients[i - 1].getNickname() + " " + mode_str + " :is unknown mode char to me\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -581,19 +601,19 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
     int value = is_adding;
 
     // check if user has permission (creator or operator)
-    bool has_permission = (target_channel->getCreator() == clients[i - 1]) || 
+    bool has_permission = (target_channel->getCreator().getFd() == clients[i - 1].getFd()) || 
                         (target_channel->isOperator(clients[i - 1]));
 
     // special case for +o/-o which only creator can use
-    if (mode_char == 'o' && target_channel->getCreator() != clients[i - 1]) {
-        std::string error_msg = "482 " + channel_name + " :You're not channel creator\n";
+    if (mode_char == 'o' && target_channel->getCreator().getFd() != clients[i - 1].getFd()) {
+        std::string error_msg = ":irc 482 " + clients[i - 1].getNickname() + " " + channel_name + " :You're not channel creator\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
 
     // for other modes, check if user has permission
     if (!has_permission) {
-        std::string error_msg = "482 " + channel_name + " :You're not channel operator\n";
+        std::string error_msg = ":irc 482 " + clients[i - 1].getNickname() + " " + channel_name + " :You're not channel operator\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -609,7 +629,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
         case 'k':
             if (is_adding) {
                 if (tokens.size() < 4) {
-                    std::string error_msg = "461 MODE :Not enough parameters\n";
+                    std::string error_msg = ":irc 461 " + clients[i - 1].getNickname() + " MODE :Not enough parameters\r\n";
                     send(client_fd, error_msg.c_str(), error_msg.length(), 0);
                     return;
                 }
@@ -622,15 +642,17 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
             break;
         case 'o':
             if (tokens.size() < 4) {
-                std::string error_msg = "461 MODE :Not enough parameters\n";
+                std::string error_msg = ":irc 461 " + clients[i - 1].getNickname() + " MODE :Not enough parameters\r\n";
                 send(client_fd, error_msg.c_str(), error_msg.length(), 0);
                 return;
             }
             {
                 std::string target_nick = tokens[3];
                 // find target client
+                bool target_found = false;
                 for (size_t j = 0; j < channel_clients.size(); j++) {
                     if (channel_clients[j].getNickname() == target_nick) {
+                        target_found = true;
                         if (is_adding) {
                             target_channel->addOperator(channel_clients[j]);
                         } else {
@@ -639,17 +661,27 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
                         break;
                     }
                 }
+                if (!target_found) {
+                    std::string error_msg = ":irc 441 " + clients[i - 1].getNickname() + " " + target_nick + " " + channel_name + " :They aren't on that channel\r\n";
+                    send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+                    return;
+                }
             }
             target_channel->setMode('o', value);
             break;
         case 'l':
             if (is_adding) {
                 if (tokens.size() < 4) {
-                    std::string error_msg = "461 MODE :Not enough parameters\n";
+                    std::string error_msg = ":irc 461 " + clients[i - 1].getNickname() + " MODE :Not enough parameters\r\n";
                     send(client_fd, error_msg.c_str(), error_msg.length(), 0);
                     return;
                 }
                 int limit = atoi(tokens[3].c_str());
+                if (limit <= 0) {
+                    std::string error_msg = ":irc 461 " + clients[i - 1].getNickname() + " MODE :Invalid limit value\r\n";
+                    send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+                    return;
+                }
                 target_channel->setMaxClients(limit);
             } else {
                 target_channel->removeUserLimit();
@@ -657,7 +689,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
             target_channel->setMode('l', value);
             break;
         default:
-            std::string error_msg = "472 " + std::string(1, mode_char) + " :is unknown mode char to me\n";
+            std::string error_msg = ":irc 472 " + clients[i - 1].getNickname() + " " + std::string(1, mode_char) + " :is unknown mode char to me\r\n";
             send(client_fd, error_msg.c_str(), error_msg.length(), 0);
             return;
     }
@@ -665,7 +697,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
     // notify all channel members of mode change
     std::string mode_change_msg;
     // Add @ prefix if mode setter is operator or creator
-    if (target_channel->isOperator(clients[i - 1]) || target_channel->getCreator() == clients[i - 1])
+    if (target_channel->isOperator(clients[i - 1]) || target_channel->getCreator().getFd() == clients[i - 1].getFd())
         mode_change_msg = ":" + std::string("@") + clients[i - 1].getNickname() + " MODE " + channel_name + " " + mode_str;
     else
         mode_change_msg = ":" + clients[i - 1].getNickname() + " MODE " + channel_name + " " + mode_str;
