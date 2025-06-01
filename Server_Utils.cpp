@@ -18,7 +18,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
 
     // validate channel name
     if (channel_name[0] != '#' && channel_name[0] != '&') {
-        std::string error_msg = ":irc 403 " + clients[i - 1].getNickname() + " " + channel_name + " :No such channel\r\n";
+        std::string error_msg = ":403 " + clients[i - 1].getNickname() + " " + channel_name + " :No such channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
