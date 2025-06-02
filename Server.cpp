@@ -171,6 +171,10 @@ void Server::handleClientMessage(size_t i) {
     else if (cmd == "MODE") {
         handleMode(i, client_fd, tokens);
     }
+    else {
+        std::string error_msg = ": 421 " + clients[i - 1].getNickname() + " " + cmd + " :Unknown command\r\n";
+        send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+    }
 }
 // :PASS aksjdlq weiooiuda
 int	Server::check_password(char *buffer, int fd) {
@@ -300,30 +304,59 @@ std::vector<std::string> split1(const std::string &s){
 	return tokens;
 }
 
-std::vector<std::string> split(const std::string &s){
+
+std::vector<std::string> split(const std::string &s) {
 	std::vector<std::string> tokens;
-	std::string token;
-	std::istringstream tokenStream(s);
-	bool inWord = false;
 	std::string currentWord;
-	int flag = 0;
+	bool inWord = false;
 
 	for (size_t i = 0; i < s.length(); i++) {
-		if (flag == 0 && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n')) {
-			tokens.push_back(currentWord);
-			currentWord.clear();
-			inWord = false;
+		if (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r') {
+			if (inWord) {
+				tokens.push_back(currentWord);
+				currentWord.clear();
+				inWord = false;
+			}
+			// If we encounter a newline, add an empty token if we're not in a word
+			if ((s[i] == '\n' || s[i] == '\r') && !inWord) {
+				tokens.push_back("");
+			}
 		} else {
-			if (!inWord && s[i] == ':')
-				flag = 1;
 			currentWord += s[i];
 			inWord = true;
 		}
 	}
 
-	if (!currentWord.empty()) {
+	if (inWord && !currentWord.empty()) {
 		tokens.push_back(currentWord);
 	}
 
 	return tokens;
 }
+// std::vector<std::string> split(const std::string &s){
+// 	std::vector<std::string> tokens;
+// 	std::string token;
+// 	std::istringstream tokenStream(s);
+// 	bool inWord = false;
+// 	std::string currentWord;
+// 	int flag = 0;
+
+// 	for (size_t i = 0; i < s.length(); i++) {
+// 		if (flag == 0 && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n')) {
+// 			tokens.push_back(currentWord);
+// 			currentWord.clear();
+// 			inWord = false;
+// 		} else {
+// 			if (!inWord && s[i] == ':')
+// 				flag = 1;
+// 			currentWord += s[i];
+// 			inWord = true;
+// 		}
+// 	}
+
+// 	if (!currentWord.empty()) {
+// 		tokens.push_back(currentWord);
+// 	}
+
+// 	return tokens;
+// }

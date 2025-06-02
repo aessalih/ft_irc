@@ -1,7 +1,7 @@
 #include "Server.hpp"
 
 void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>& tokens) {
-    if (tokens.size() < 2) {
+    if (tokens.size() < 2 || tokens[1].empty()) {
         std::string error_msg = ": 461 " + clients[i - 1].getNickname() + " :Not enough parameters.\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
@@ -18,7 +18,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
 
     // validate channel name
     if (channel_name[0] != '#' && channel_name[0] != '&') {
-        std::string error_msg = ":403 " + clients[i - 1].getNickname() + " " + channel_name + " :No such channel\r\n";
+        std::string error_msg = ": 403 " + clients[i - 1].getNickname() + " " + channel_name + " :No such channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -60,7 +60,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
         }
         
         if (channel_key != -1 && (key.empty() || channel_key != provided_key)) {
-            std::string error_msg = ":irc 475 " + clients[i - 1].getNickname() + " " + channel_name + " :Cannot join channel (+k)\r\n";
+            std::string error_msg = ": 475 " + clients[i - 1].getNickname() + " " + channel_name + " :Cannot join channel (+k)\r\n";
             send(client_fd, error_msg.c_str(), error_msg.length(), 0);
             return;
         }
@@ -76,7 +76,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
                 }
             }
             if (!is_invited) {
-                std::string error_msg = ":irc 473 " + clients[i - 1].getNickname() + " " + channel_name + " :Cannot join channel (+i)\r\n";
+                std::string error_msg = ": 473 " + clients[i - 1].getNickname() + " " + channel_name + " :Cannot join channel (+i)\r\n";
                 send(client_fd, error_msg.c_str(), error_msg.length(), 0);
                 return;
             }
@@ -89,7 +89,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
             int max_clients = target_channel->get_max_clients();
             const std::vector<Client> &channel_clients = target_channel->get_clients();
             if (max_clients > 0 && static_cast<int>(channel_clients.size()) >= max_clients) {
-                std::string error_msg = ":irc 471 " + clients[i - 1].getNickname() + " " + channel_name + " :Cannot join channel (+l)\r\n";
+                std::string error_msg = ": 471 " + clients[i - 1].getNickname() + " " + channel_name + " :Cannot join channel (+l)\r\n";
                 send(client_fd, error_msg.c_str(), error_msg.length(), 0);
                 return;
             }
@@ -145,7 +145,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
 
 void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::string>& tokens) {
     if (tokens.size() < 3) {
-        std::string error_msg = ":irc 461 " + clients[i - 1].getNickname() + " PRIVMSG :Not enough parameters\r\n";
+        std::string error_msg = ": 412 " + clients[i - 1].getNickname() + " :No text to send\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -153,11 +153,14 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
     std::string target = tokens[1];
     std::string message;
 
-    // combine all remaining tokens into the message
+    // Get the message part (everything after the target)
     for (size_t j = 2; j < tokens.size(); j++) {
-        if (j > 2)
-            message += " ";
-        message += tokens[j];
+        if (j == 2 && tokens[j][0] == ':') {
+            message = tokens[j].substr(1);
+        } else {
+            message = tokens[j];
+        }
+        break; // Only take the first word after target
     }
 
     // Remove trailing newline and carriage return if present
@@ -165,9 +168,19 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
         message.erase(message.find_last_not_of("\r\n") + 1);
     }
 
-    // Remove leading colon if present (standard IRC format)
-    if (!message.empty() && message[0] == ':') {
-        message = message.substr(1);
+    // Handle quoted messages
+    if (!message.empty() && message[0] == '"') {
+        size_t end_quote = message.find('"', 1);
+        if (end_quote != std::string::npos) {
+            message = message.substr(0, end_quote);
+        }
+    }
+
+    // check if message is empty after processing
+    if (message.empty()) {
+        std::string error_msg = ": 412 " + clients[i - 1].getNickname() + " :No text to send\r\n";
+        send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+        return;
     }
 
     // check if target is a channel
@@ -182,7 +195,7 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
         }
 
         if (!target_channel) {
-            std::string error_msg = ":irc 403 " + clients[i - 1].getNickname() + " " + target + " :No such channel\r\n";
+            std::string error_msg = ": 403 " + clients[i - 1].getNickname() + " " + target + " :No such channel\r\n";
             send(client_fd, error_msg.c_str(), error_msg.length(), 0);
             return;
         }
@@ -205,11 +218,8 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
 
         // send message to all clients in channel
         std::string privmsg;
-        // Add @ prefix if sender is operator or creator
-        if (target_channel->isOperator(clients[i - 1]) || target_channel->getCreator() == clients[i - 1])
-            privmsg = ":" + std::string("@") + clients[i - 1].getNickname() + "!~" + clients[i - 1].getUsername() + "@localhost PRIVMSG " + target + " :";
-        else
-            privmsg = ":" + clients[i - 1].getNickname() + "!~" + clients[i - 1].getUsername() + "@localhost PRIVMSG " + target + " :";
+        // Format message without @ prefix for operators
+        privmsg = ":" + clients[i - 1].getNickname() + "!~" + clients[i - 1].getUsername() + "@localhost PRIVMSG " + target + " :";
         privmsg += message + "\r\n";
         for (size_t j = 0; j < channel_clients.size(); j++) {
             if (channel_clients[j].getFd() != clients[i - 1].getFd()) { // Don't send to self
@@ -230,7 +240,7 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
         }
 
         if (!user_found) {
-            std::string error_msg = ":irc 401 " + clients[i - 1].getNickname() + " " + target + " :No such nick\r\n";
+            std::string error_msg = ": 401 " + clients[i - 1].getNickname() + " " + target + " :No such nick/channel\r\n";
             send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         }
     }
@@ -331,8 +341,8 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string>&
 }
 
 void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string>& tokens) {
-    if (tokens.size() < 3) {
-        std::string error_msg = "461 INVITE :Not enough parameters\n";
+    if (tokens.size() < 3 || tokens[2].empty()) {
+        std::string error_msg = ": 461 " + clients[i - 1].getNickname() + " :Not enough parameters.\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -348,7 +358,7 @@ void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string
 
     // validate channel name
     if (channel_name[0] != '#') {
-        std::string error_msg = "403 " + channel_name + " :No such channel\n";
+        std::string error_msg = ": 403 " + clients[i - 1].getNickname() + " " + channel_name + " :No such channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -363,7 +373,7 @@ void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string
     }
 
     if (!target_channel) {
-        std::string error_msg = "403 " + channel_name + " :No such channel\n";
+        std::string error_msg = ": 403 " + clients[i - 1].getNickname() + " " + channel_name + " :No such channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -379,9 +389,18 @@ void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string
     }
 
     if (!inviter_in_channel) {
-        std::string error_msg = "442 " + channel_name + " :You're not on that channel\n";
+        std::string error_msg = ": 442 " + clients[i - 1].getNickname() + " " + channel_name + " :You're not on that channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
+    }
+
+    // check if channel is invite-only and user is not operator
+    if (target_channel->get_mode().find('i') != std::string::npos) {
+        if (!target_channel->isOperator(clients[i - 1]) && target_channel->getCreator() != clients[i - 1]) {
+            std::string error_msg = ": 482 " + channel_name + " :You're not a channel operator\r\n";
+            send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+            return;
+        }
     }
 
     // find target client in global client list
@@ -396,7 +415,7 @@ void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string
     }
 
     if (!target_found) {
-        std::string error_msg = "401 " + target_nick + " :No such nick\n";
+        std::string error_msg = ": 401 " + clients[i - 1].getNickname() + " " + target_nick + " :No such nick/channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -411,14 +430,14 @@ void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string
     }
 
     // send INVITE message to target client
-    std::string invite_msg = ":" + clients[i - 1].getNickname() + " INVITE " + target_nick + " " + channel_name + "\n";
+    std::string invite_msg = ":" + clients[i - 1].getNickname() + "!" + clients[i - 1].getUsername() + "@127.0.0.1 INVITE " + target_nick + " " + channel_name + "\r\n";
     send(target_client->getFd(), invite_msg.c_str(), invite_msg.length(), 0);
 
     // add user to invited list
     target_channel->add_invited_user(*target_client);
 
     // send RPL_INVITING to inviter
-    std::string inviting_msg = "341 " + clients[i - 1].getNickname() + " " + target_nick + " " + channel_name + "\n";
+    std::string inviting_msg = ": 341 " + clients[i - 1].getNickname() + " " + target_nick + " " + channel_name + "\r\n";
     send(client_fd, inviting_msg.c_str(), inviting_msg.length(), 0);
 }
 
