@@ -85,7 +85,7 @@ int Server::run() {
 					handleClientMessage(i);
 			}
 			else if (fds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-				std::cout << "Client disconnected (fd: " << fds[i].fd << ")\n";
+				std::cout << "\033[1;32mClient " << clients[i - 1].getNickname() << " disconnected\033[0m" << "\n";
 				close(fds[i].fd);
 				fds.erase(fds.begin() + i);
 				clients.erase(clients.begin() + i - 1);
@@ -122,14 +122,13 @@ void Server::handleClientMessage(size_t i) {
 	int client_fd = fds[i].fd;
 	int bytes = recv(client_fd, buffer, 1024, 0);
 	if (bytes <= 0) {
-		std::cout << "Client disconnected (fd : " << client_fd << ")\n";
+		std::cout << "\033[1;32mClient " << clients[i - 1].getNickname() << " disconnected\033[0m" << "\n";
 		close(client_fd);
 		fds.erase(fds.begin() + i);
 		clients.erase(clients.begin() + i - 1);
 		return ;
 	}
 	// check if client is registered
-	std::cout << buffer;
 	if (clients[i - 1].getIsRegistered() == false) {
 		if (clients[i - 1].getHavePass() == false) {
 			if (check_password(buffer, client_fd)) {
@@ -244,7 +243,8 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 		return 0;
 	}
 	else if (name == "USER") {
-		if (split1(newBuffer).size() != 4) {
+		std::vector<std::string> a = split1(newBuffer);
+		if (split1(newBuffer).size() != 5) {
 			response = ":irc 461 user : invalid username\r\n";
 			send(fd, response.c_str(), response.size(), 0);
 			return 0;
@@ -286,7 +286,7 @@ std::vector<std::string> split1(const std::string &s){
 	int flag = 0;
 
 	for (size_t i = 0; i < s.length(); i++) {
-		if (flag == 0 && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || '\r')) {
+		if (flag == 0 && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n')) {
 			tokens.push_back(currentWord);
 			currentWord.clear();
 			inWord = false;
