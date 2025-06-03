@@ -78,6 +78,7 @@ std::string Channel::get_mode() const {
 	return ordered_mode;
 }
 
+
 void Channel::set_max_clients(int max) {
 	max_client = max;
 }

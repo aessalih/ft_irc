@@ -306,60 +306,31 @@ std::vector<std::string> split1(const std::string &s){
 }
 
 
-// std::vector<std::string> split(const std::string &s) {
-// 	std::vector<std::string> tokens;
-// 	std::string currentWord;
-// 	bool inWord = false;
+std::vector<std::string> split(const std::string &s) {
+    std::vector<std::string> tokens;
+    std::string currentWord;
+    bool inWord = false;
 
-// 	for (size_t i = 0; i < s.length(); i++) {
-// 		if (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r') {
-// 			if (inWord) {
-// 				tokens.push_back(currentWord);
-// 				currentWord.clear();
-// 				inWord = false;
-// 			}
-// 			// If we encounter a newline, add an empty token if we're not in a word
-// 			if ((s[i] == '\n' || s[i] == '\r') && !inWord) {
-// 				tokens.push_back("");
-// 			}
-// 		} else {
-// 			currentWord += s[i];
-// 			inWord = true;
-// 		}
-// 	}
+    for (size_t i = 0; i < s.length(); ++i) {
+        char c = s[i];
+        if (c == ' ' || c == '\t' || c == '\n') {
+            if (inWord) {  // End of a word
+                tokens.push_back(currentWord);
+                currentWord.clear();
+                inWord = false;
+            }
+        } else {
+            currentWord += c;
+            inWord = true;
+        }
+    }
 
-// 	if (inWord && !currentWord.empty()) {
-// 		tokens.push_back(currentWord);
-// 	}
+    // Add the last word if it exists
+    if (inWord) {
+        tokens.push_back(currentWord);
+    }
 
-// 	return tokens;
-// }
-std::vector<std::string> split(const std::string &s){
-	std::vector<std::string> tokens;
-	std::string token;
-	std::istringstream tokenStream(s);
-	bool inWord = false;
-	std::string currentWord;
-	int flag = 0;
-
-	for (size_t i = 0; i < s.length(); i++) {
-		if (flag == 0 && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n')) {
-			tokens.push_back(currentWord);
-			currentWord.clear();
-			inWord = false;
-		} else {
-			if (!inWord && s[i] == ':')
-				flag = 1;
-			currentWord += s[i];
-			inWord = true;
-		}
-	}
-
-	if (!currentWord.empty()) {
-		tokens.push_back(currentWord);
-	}
-
-	return tokens;
+    return tokens;
 }
 
 // void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>& tokens) {

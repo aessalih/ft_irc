@@ -519,6 +519,9 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
 }
 
 void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>& tokens) {
+    for (int i = 0; i < tokens.size(); i++) {
+        std::cout <<"{" << tokens[i] << "}\n";
+    }
     if (tokens.size() < 2) {
         std::string error_msg = ": 461 " + clients[i - 1].getNickname() + " :Not enough parameters\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
@@ -565,7 +568,23 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
 
     // if no mode change requested, show current modes
     if (tokens.size() == 2) {
-        std::string mode_msg = ": 324 " + clients[i - 1].getNickname() + " " + channel_name + " " + target_channel->get_mode() + "\r\n";
+        std::string mode_msg = ": 324 " + clients[i - 1].getNickname() + " " + channel_name + " " + target_channel->get_mode();
+        if (target_channel->get_max_clients() != -1)
+        {
+            std::stringstream iss;
+            iss << target_channel->get_max_clients();
+            mode_msg += " ";
+            mode_msg += iss.str();
+            mode_msg += " ";
+        }
+        // Add operator list with @ symbol
+        for (size_t j = 0; j < channel_clients.size(); j++) {
+            if (target_channel->isOperator(channel_clients[j])) {
+                mode_msg += " @";
+                mode_msg += channel_clients[j].getNickname();
+            }
+        }
+        mode_msg += "\r\n";
         send(client_fd, mode_msg.c_str(), mode_msg.length(), 0);
         return;
     }
@@ -665,7 +684,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
     }
 
     // notify all channel members of mode change
-    std::string mode_change_msg = ":" + clients[i - 1].getNickname() + " MODE " + channel_name + " " + mode_str;
+    std::string mode_change_msg = ":" + clients[i - 1].getNickname() + "!" + clients[i - 1].getUsername() + " MODE " + channel_name + " " + mode_str;
     if (tokens.size() > 3) {
         mode_change_msg += " " + tokens[3];
     }
