@@ -1,7 +1,7 @@
 SRC= main.cpp Server.cpp Client.cpp Channel.cpp Server_Utils.cpp
 
 CC=c++
-FLAGS=  -std=c++98  -fsanitize=address -g #-Wall -Wextra -Werror 
+FLAGS=  #-std=c++98  -fsanitize=address -g #-Wall -Wextra -Werror 
 
 O_SRC=$(SRC:.cpp=.o)
 

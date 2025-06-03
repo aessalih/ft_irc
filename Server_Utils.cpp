@@ -101,7 +101,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
             if (channel_clients[j].getNickname() == clients[i - 1].getNickname()) {
                 // user is already in the channel, just send them the topic if it exists
                 if (!target_channel->get_topic().empty()) {
-                    std::string topic_msg = ":irc 332 " + clients[i - 1].getNickname() + " " + channel_name + " :" + target_channel->get_topic() + "\r\n";
+                    std::string topic_msg = ": 332 " + clients[i - 1].getNickname() + " " + channel_name + " :" + target_channel->get_topic() + "\r\n";
                     send(client_fd, topic_msg.c_str(), topic_msg.length(), 0);
                 }
                 return;
@@ -145,7 +145,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
 
 void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::string>& tokens) {
     if (tokens.size() < 3) {
-        std::string error_msg = ": 412 " + clients[i - 1].getNickname() + " :No text to send\r\n";
+        std::string error_msg = ": 461 " + clients[i - 1].getNickname() + " :Not enough parameters.\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -211,7 +211,7 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
         }
 
         if (!is_in_channel) {
-            std::string error_msg = ":irc 404 " + clients[i - 1].getNickname() + " " + target + " :Cannot send to channel\r\n";
+            std::string error_msg = ": 404 " + clients[i - 1].getNickname() + " " + target + " :Cannot send to channel\r\n";
             send(client_fd, error_msg.c_str(), error_msg.length(), 0);
             return;
         }
@@ -248,7 +248,7 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
 
 void Server::handleKick(size_t i, int client_fd, const std::vector<std::string>& tokens) {
     if (tokens.size() < 3) {
-        std::string error_msg = "461 KICK :Not enough parameters\n";
+        std::string error_msg = ": 461 " +  clients[i -1].getNickname() + " :Not enough parameters\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -264,7 +264,7 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string>&
 
     // validate channel name
     if (channel_name[0] != '#') {
-        std::string error_msg = "403 " + channel_name + " :No such channel\n";
+        std::string error_msg = ": 403 " + clients[i - 1].getNickname() + " " + channel_name + " :No such channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -279,7 +279,7 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string>&
     }
 
     if (!target_channel) {
-        std::string error_msg = "403 " + channel_name + " :No such channel\n";
+        std::string error_msg = ": 403 " + clients[i - 1].getNickname() + " " + channel_name + " :No such channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -295,7 +295,7 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string>&
     }
 
     if (!kicker_in_channel) {
-        std::string error_msg = "442 " + channel_name + " :You're not on that channel\n";
+        std::string error_msg = ": 442 " + target_nick  + " " + channel_name + " :You're not on that channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -312,14 +312,14 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string>&
     }
 
     if (!target_found) {
-        std::string error_msg = "441 " + target_nick + " " + channel_name + " :They aren't on that channel\n";
+        std::string error_msg = ": 441 " + clients[i - 1].getNickname() + " " + target_nick + " " +channel_name +" :They aren't on that channel\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
 
     // check if kicker is creator or operator
     if (target_channel->getCreator() != clients[i - 1] && !target_channel->isOperator(clients[i - 1])) {
-        std::string error_msg = "482 " + channel_name + " :You're not channel operator\n";
+        std::string error_msg = ": 482 " + clients[i - 1].getNickname() + " :You're not channel a operator\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -327,17 +327,15 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string>&
     // remove client from channel
     target_channel->delete_client(*target_client);
 
-    // send KICK message to all clients in channel
-    std::string kick_msg;
-    // Add @ prefix if kicker is operator or creator
-    if (target_channel->isOperator(clients[i - 1]) || target_channel->getCreator() == clients[i - 1])
-        kick_msg = ":" + std::string("@") + clients[i - 1].getNickname() + " KICK " + channel_name + " " + target_nick;
-    else
-        kick_msg = ":" + clients[i - 1].getNickname() + " KICK " + channel_name + " " + target_nick;
-    kick_msg += "\r\n";
+    // send KICK message to all clients in channel including the kicked user
+    std::string kick_msg = ":" + clients[i - 1].getNickname() + "!" + clients[i - 1].getUsername() + "@127.0.0.1 KICK " + channel_name + " " + target_nick + " :Yeet Out\r\n";
+    
+    // Send to all users in the channel
     for (size_t j = 0; j < channel_clients.size(); j++) {
         send(channel_clients[j].getFd(), kick_msg.c_str(), kick_msg.length(), 0);
     }
+    // Send to the kicked user
+    send(target_client->getFd(), kick_msg.c_str(), kick_msg.length(), 0);
 }
 
 void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string>& tokens) {
@@ -394,13 +392,11 @@ void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string
         return;
     }
 
-    // check if channel is invite-only and user is not operator
-    if (target_channel->get_mode().find('i') != std::string::npos) {
-        if (!target_channel->isOperator(clients[i - 1]) && target_channel->getCreator() != clients[i - 1]) {
-            std::string error_msg = ": 482 " + channel_name + " :You're not a channel operator\r\n";
-            send(client_fd, error_msg.c_str(), error_msg.length(), 0);
-            return;
-        }
+    // check if user is operator or creator
+    if (!target_channel->isOperator(clients[i - 1]) && target_channel->getCreator() != clients[i - 1]) {
+        std::string error_msg = ": 482 " + channel_name + " :You're not a channel operator\r\n";
+        send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+        return;
     }
 
     // find target client in global client list
@@ -415,18 +411,9 @@ void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string
     }
 
     if (!target_found) {
-        std::string error_msg = ": 401 " + clients[i - 1].getNickname() + " " + target_nick + " :No such nick/channel\r\n";
+        std::string error_msg = ": 401 " + channel_name + " " + target_nick + " :No such nick/channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
-    }
-
-    // check if target is already in the channel
-    for (size_t j = 0; j < channel_clients.size(); j++) {
-        if (channel_clients[j] == *target_client) {
-            std::string error_msg = "443 " + target_nick + " " + channel_name + " :is already on channel\n";
-            send(client_fd, error_msg.c_str(), error_msg.length(), 0);
-            return;
-        }
     }
 
     // send INVITE message to target client
@@ -442,7 +429,7 @@ void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string
 }
 
 void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>& tokens) {
-    if (tokens.size() < 2) {
+    if (tokens.size() < 2 || tokens[1].empty()) {
         std::string error_msg = ": 461 " + clients[i - 1].getNickname() + " :Not enough parameters.\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
@@ -476,14 +463,16 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
     }
 
     if (!user_in_channel) {
-        std::string error_msg = ": 442 " + channel_name + " :You're not on that channel\r\n";
+        std::string error_msg = ": 442 " + clients[i - 1].getNickname() + " " + channel_name + " :You're not on that channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
-
+    std::cout << tokens.size() << std::endl;
     // if no topic provided, show current topic (allowed for all users)
     if (tokens.size() == 2) {
         std::string topic = target_channel->get_topic();
+        std::cout << "{" << topic << "}\n"; 
+        
         if (topic.empty()) {
             std::string msg = ": 331 " + clients[i - 1].getNickname() + " " + channel_name + " :No topic is set\r\n";
             send(client_fd, msg.c_str(), msg.length(), 0);
@@ -491,14 +480,14 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
         else {
             std::string msg = ": 332 " + clients[i - 1].getNickname() + " " + channel_name + " :" + topic + "\r\n";
             send(client_fd, msg.c_str(), msg.length(), 0);
+            // Add RPL_TOPICWHOTIME
+            time_t now = time(0);
+            std::stringstream ss;
+            ss << now;
+            std::string who_time_msg = ": 333 " + clients[i - 1].getNickname() + " " + channel_name + " " + 
+                                     target_channel->getCreator().getNickname() + " " + ss.str() + "\r\n";
+            send(client_fd, who_time_msg.c_str(), who_time_msg.length(), 0);
         }
-        return;
-    }
-
-    // if trying to change topic, check if user is creator or operator
-    if (target_channel->getCreator() != clients[i - 1] && !target_channel->isOperator(clients[i - 1])) {
-        std::string error_msg = ": 482 " + channel_name + " :You're not channel operator\r\n";
-        send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
 
@@ -521,22 +510,24 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
     target_channel->set_topic(new_topic);
     
     // notify all channel members of topic change
-    std::string topic_msg = ": 332 " + clients[i - 1].getNickname() + "!" + clients[i - 1].getUsername() + "@127.0.0.1 " + channel_name + " :" + new_topic + "\r\n";
+    // :" + clients[i - 1].getNickname() + "!" + clients[i - 1].getUsername() + "@127.0.0.1 KICK " + channel_name + " " + target_nick + " :Yeet Out\r\n";
+    std::string topic_msg = ": 332 " + clients[i - 1].getNickname() + "!" + clients[i -1].getUsername() + "@127.0.0.1 " + channel_name + " :" + new_topic + "\r\n";
     for (size_t j = 0; j < channel_clients.size(); j++) {
         send(channel_clients[j].getFd(), topic_msg.c_str(), topic_msg.length(), 0);
+        // Add RPL_TOPICWHOTIME for each member
     }
 }
 
 void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>& tokens) {
     if (tokens.size() < 2) {
-        std::string error_msg = "461 MODE :Not enough parameters\n";
+        std::string error_msg = ": 461 " + clients[i - 1].getNickname() + " :Not enough parameters\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
 
     std::string channel_name = tokens[1];
     if (channel_name[0] != '#') {
-        std::string error_msg = "403 " + channel_name + " :No such channel\n";
+        std::string error_msg = ": 403 " + clients[i - 1].getNickname() + " " + channel_name + " :No such channel\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -567,14 +558,14 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
     }
 
     if (!user_in_channel) {
-        std::string error_msg = "442 " + channel_name + " :You're not on that channel\n";
+        std::string error_msg = ": 442 "  + clients[i - 1].getNickname() + " "  + channel_name + " :You're not on that channel\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
 
     // if no mode change requested, show current modes
     if (tokens.size() == 2) {
-        std::string mode_msg = "324 " + clients[i - 1].getNickname() + " " + channel_name + " " + target_channel->get_mode() + "\n";
+        std::string mode_msg = ": 324 " + clients[i - 1].getNickname() + " " + channel_name + " " + target_channel->get_mode() + "\n";
         send(client_fd, mode_msg.c_str(), mode_msg.length(), 0);
         return;
     }
@@ -582,7 +573,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
     // parse mode change
     std::string mode_str = tokens[2];
     if (mode_str.length() < 2 || (mode_str[0] != '+' && mode_str[0] != '-')) {
-        std::string error_msg = "472 " + mode_str + " :is unknown mode char to me\n";
+        std::string error_msg = ": 472 " + mode_str + " :is unknown mode char to me\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -668,7 +659,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
             target_channel->setMode('l', value);
             break;
         default:
-            std::string error_msg = "472 " + std::string(1, mode_char) + " :is unknown mode char to me\n";
+            std::string error_msg = ": 472 " + std::string(1, mode_char) + " :is unknown mode char to me\n";
             send(client_fd, error_msg.c_str(), error_msg.length(), 0);
             return;
     }

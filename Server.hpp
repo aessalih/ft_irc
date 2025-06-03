@@ -62,6 +62,12 @@ class Server {
    		void handleTopic(size_t i, int client_fd, const std::vector<std::string>& tokens);
    		void handleMode(size_t i, int client_fd, const std::vector<std::string>& tokens);
 
+		Channel* getChannel(const std::string& channelName);
+		void broadcastToChannel(const Channel& channel, const std::string& message);
+
+		// Mode handling functions
+		std::string displayChannelModes(const std::string& clientNickName, const Channel& channel);
+		
 };
 std::vector<std::string> split(const std::string &s);
 std::vector<std::string> split1(const std::string &s);

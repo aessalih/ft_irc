@@ -171,7 +171,7 @@ void Server::handleClientMessage(size_t i) {
     else if (cmd == "MODE") {
         handleMode(i, client_fd, tokens);
     }
-    else {
+    else if (!cmd.empty()){
         std::string error_msg = ": 421 " + clients[i - 1].getNickname() + " " + cmd + " :Unknown command\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
     }
@@ -305,58 +305,328 @@ std::vector<std::string> split1(const std::string &s){
 }
 
 
-std::vector<std::string> split(const std::string &s) {
-	std::vector<std::string> tokens;
-	std::string currentWord;
-	bool inWord = false;
-
-	for (size_t i = 0; i < s.length(); i++) {
-		if (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r') {
-			if (inWord) {
-				tokens.push_back(currentWord);
-				currentWord.clear();
-				inWord = false;
-			}
-			// If we encounter a newline, add an empty token if we're not in a word
-			if ((s[i] == '\n' || s[i] == '\r') && !inWord) {
-				tokens.push_back("");
-			}
-		} else {
-			currentWord += s[i];
-			inWord = true;
-		}
-	}
-
-	if (inWord && !currentWord.empty()) {
-		tokens.push_back(currentWord);
-	}
-
-	return tokens;
-}
-// std::vector<std::string> split(const std::string &s){
+// std::vector<std::string> split(const std::string &s) {
 // 	std::vector<std::string> tokens;
-// 	std::string token;
-// 	std::istringstream tokenStream(s);
-// 	bool inWord = false;
 // 	std::string currentWord;
-// 	int flag = 0;
+// 	bool inWord = false;
 
 // 	for (size_t i = 0; i < s.length(); i++) {
-// 		if (flag == 0 && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n')) {
-// 			tokens.push_back(currentWord);
-// 			currentWord.clear();
-// 			inWord = false;
+// 		if (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r') {
+// 			if (inWord) {
+// 				tokens.push_back(currentWord);
+// 				currentWord.clear();
+// 				inWord = false;
+// 			}
+// 			// If we encounter a newline, add an empty token if we're not in a word
+// 			if ((s[i] == '\n' || s[i] == '\r') && !inWord) {
+// 				tokens.push_back("");
+// 			}
 // 		} else {
-// 			if (!inWord && s[i] == ':')
-// 				flag = 1;
 // 			currentWord += s[i];
 // 			inWord = true;
 // 		}
 // 	}
 
-// 	if (!currentWord.empty()) {
+// 	if (inWord && !currentWord.empty()) {
 // 		tokens.push_back(currentWord);
 // 	}
 
 // 	return tokens;
+// }
+std::vector<std::string> split(const std::string &s){
+	std::vector<std::string> tokens;
+	std::string token;
+	std::istringstream tokenStream(s);
+	bool inWord = false;
+	std::string currentWord;
+	int flag = 0;
+
+	for (size_t i = 0; i < s.length(); i++) {
+		if (flag == 0 && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n')) {
+			tokens.push_back(currentWord);
+			currentWord.clear();
+			inWord = false;
+		} else {
+			if (!inWord && s[i] == ':')
+				flag = 1;
+			currentWord += s[i];
+			inWord = true;
+		}
+	}
+
+	if (!currentWord.empty()) {
+		tokens.push_back(currentWord);
+	}
+
+	return tokens;
+}
+
+// void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>& tokens) {
+//     Client& client = clients[i - 1];
+//     if (tokens.size() < 2) {
+//         std::string response = ": 461 ";
+//         response += client.getNickname();
+//         response += " MODE :Not enough parameters\r\n";
+//         send(client_fd, response.c_str(), response.size(), 0);
+//         return;
+//     }
+
+//     std::string channelName = tokens[1];
+//     if (channelName[0] != '#' && channelName[0] != '&') {
+//         std::string response = ": 403 ";
+//         response += client.getNickname();
+//         response += " ";
+//         response += channelName;
+//         response += " :No such channel\r\n";
+//         send(client_fd, response.c_str(), response.size(), 0);
+//         return;
+//     }
+
+//     Channel* channel = getChannel(channelName);
+//     if (!channel) {
+//         std::string response = ": 403 ";
+//         response += client.getNickname();
+//         response += " ";
+//         response += channelName;
+//         response += " :No such channel\r\n";
+//         send(client_fd, response.c_str(), response.size(), 0);
+//         return;
+//     }
+
+//     // Check if user is in channel
+//     bool user_in_channel = false;
+//     const std::vector<Client>& channel_clients = channel->get_clients();
+//     for (size_t j = 0; j < channel_clients.size(); j++) {
+//         if (channel_clients[j] == client) {
+//             user_in_channel = true;
+//             break;
+//         }
+//     }
+
+//     if (!user_in_channel) {
+//         std::string response = ": 442 ";
+//         response += client.getNickname();
+//         response += " ";
+//         response += channelName;
+//         response += " :You're not on that channel\r\n";
+//         send(client_fd, response.c_str(), response.size(), 0);
+//         return;
+//     }
+
+//     // If no mode string provided, show current modes
+//     if (tokens.size() == 2) {
+//         std::string response = ": 324 ";
+//         response += client.getNickname();
+//         response += " ";
+//         response += channelName;
+//         response += " ";
+//         response += channel->get_mode();
+        
+//         // Add mode arguments
+//         std::string args;
+//         if (channel->get_mode().find('k') != std::string::npos) {
+//             std::stringstream ss;
+//             ss << channel->get_key();
+//             args += ss.str();
+//             args += " ";
+//         }
+//         if (channel->get_mode().find('l') != std::string::npos) {
+//             std::stringstream ss;
+//             ss << channel->get_max_clients();
+//             args += ss.str();
+//             args += " ";
+//         }
+//         if (!args.empty()) {
+//             response += " ";
+//             response += args;
+//         }
+        
+//         // Add all operators including creator
+//         for (size_t j = 0; j < channel_clients.size(); j++) {
+//             if (channel->isOperator(channel_clients[j]) || channel->getCreator() == channel_clients[j]) {
+//                 response += " @";
+//                 response += channel_clients[j].getNickname();
+//             }
+//         }
+//         response += "\r\n";
+//         send(client_fd, response.c_str(), response.size(), 0);
+//         return;
+//     }
+
+//     // Check if user has operator privileges
+//     if (!channel->isOperator(client) && channel->getCreator() != client) {
+//         std::string response = ": 482 ";
+//         response += client.getNickname();
+//         response += " ";
+//         response += channelName;
+//         response += " :You're not channel operator\r\n";
+//         send(client_fd, response.c_str(), response.size(), 0);
+//         return;
+//     }
+
+//     // Handle mode changes
+//     std::string modeStr = tokens[2];
+//     if (modeStr[0] != '+' && modeStr[0] != '-') {
+//         std::string response = ": 472 ";
+//         response += client.getNickname();
+//         response += " ";
+//         response += modeStr[0];
+//         response += " :is unknown mode char to me\r\n";
+//         send(client_fd, response.c_str(), response.size(), 0);
+//         return;
+//     }
+
+//     // Process each mode character
+//     char sign = modeStr[0];
+//     size_t param_index = 3;
+//     std::string new_mode_str = "+";  // Start with + for new modes
+    
+//     for (size_t i = 1; i < modeStr.length(); i++) {
+//         if (modeStr[i] == '+' || modeStr[i] == '-') {
+//             sign = modeStr[i];
+//             continue;
+//         }
+
+//         switch (modeStr[i]) {
+//             case 'o':
+//                 if (sign == '+' && tokens.size() <= param_index) {
+//                     std::string response = ": 461 ";
+//                     response += client.getNickname();
+//                     response += " MODE :Not enough parameters\r\n";
+//                     send(client_fd, response.c_str(), response.size(), 0);
+//                     return;
+//                 }
+//                 if (sign == '+') {
+//                     std::string target_nick = tokens[param_index++];
+//                     for (size_t j = 0; j < channel_clients.size(); j++) {
+//                         if (channel_clients[j].getNickname() == target_nick) {
+//                             channel->addOperator(channel_clients[j]);
+//                             break;
+//                         }
+//                     }
+//                 }
+//                 channel->setMode('o', (sign == '+'));
+//                 if (sign == '+') new_mode_str += 'o';
+//                 break;
+
+//             case 'k':
+//                 if (sign == '+' && tokens.size() <= param_index) {
+//                     std::string response = ": 461 ";
+//                     response += client.getNickname();
+//                     response += " MODE :Not enough parameters\r\n";
+//                     send(client_fd, response.c_str(), response.size(), 0);
+//                     return;
+//                 }
+//                 if (sign == '+') {
+//                     int key = atoi(tokens[param_index++].c_str());
+//                     channel->set_key(key);
+//                 } else {
+//                     channel->set_key(-1);
+//                 }
+//                 channel->setMode('k', (sign == '+'));
+//                 if (sign == '+') new_mode_str += 'k';
+//                 break;
+
+//             case 'l':
+//                 if (sign == '+' && tokens.size() <= param_index) {
+//                     std::string response = ": 461 ";
+//                     response += client.getNickname();
+//                     response += " MODE :Not enough parameters\r\n";
+//                     send(client_fd, response.c_str(), response.size(), 0);
+//                     return;
+//                 }
+//                 if (sign == '+') {
+//                     std::string limit_str = tokens[param_index++];
+//                     bool is_number = true;
+//                     for (size_t j = 0; j < limit_str.length(); j++) {
+//                         if (!isdigit(limit_str[j])) {
+//                             is_number = false;
+//                             break;
+//                         }
+//                     }
+//                     if (!is_number) {
+//                         std::string response = ": 461 ";
+//                         response += client.getNickname();
+//                         response += " MODE :Not enough parameters\r\n";
+//                         send(client_fd, response.c_str(), response.size(), 0);
+//                         return;
+//                     }
+//                     int limit = atoi(limit_str.c_str());
+//                     if (channel->get_clients_size() > limit) {
+//                         std::string response = ": 471 ";
+//                         response += client.getNickname();
+//                         response += " ";
+//                         response += channelName;
+//                         response += " :Cannot join channel (+l)\r\n";
+//                         send(client_fd, response.c_str(), response.size(), 0);
+//                         return;
+//                     }
+//                     channel->setMaxClients(limit);
+//                 } else {
+//                     channel->removeUserLimit();
+//                 }
+//                 channel->setMode('l', (sign == '+'));
+//                 if (sign == '+') new_mode_str += 'l';
+//                 break;
+
+//             case 'i':
+//                 channel->setInviteOnly(sign == '+');
+//                 channel->setMode('i', (sign == '+'));
+//                 if (sign == '+') new_mode_str += 'i';
+//                 break;
+
+//             case 't':
+//                 channel->setTopicRestricted(sign == '+');
+//                 channel->setMode('t', (sign == '+'));
+//                 if (sign == '+') new_mode_str += 't';
+//                 break;
+
+//             default:
+//                 std::string response = ": 472 ";
+//                 response += client.getNickname();
+//                 response += " ";
+//                 response += modeStr[i];
+//                 response += " :is unknown mode char to me\r\n";
+//                 send(client_fd, response.c_str(), response.size(), 0);
+//                 return;
+//         }
+//     }
+
+//     channel->updateModeString();
+    
+//     // Prepare mode response
+//     std::string response = ":";
+//     response += client.getNickname();
+//     response += "!";
+//     if (!client.getUsername().empty()) {
+//         response += client.getUsername();
+//     }
+//     response += " MODE ";
+//     response += channelName;
+//     response += " ";
+//     response += modeStr;
+//     if (tokens.size() > 3) {
+//         response += " ";
+//         response += tokens[3];
+//     }
+//     response += "\r\n";
+    
+//     // Broadcast mode change to all channel members
+//     broadcastToChannel(*channel, response);
+// }
+
+// Channel* Server::getChannel(const std::string& channelName) {
+//     for (size_t i = 0; i < channels.size(); i++) {
+//         if (channels[i].get_name() == channelName) {
+//             return &channels[i];
+//         }
+//     }
+//     return NULL;
+// }
+
+// void Server::broadcastToChannel(const Channel& channel, const std::string& message) {
+//     const std::vector<Client>& clients = channel.get_clients();
+//     for (size_t i = 0; i < clients.size(); i++) {
+//         send(clients[i].getFd(), message.c_str(), message.size(), 0);
+//     }
 // }
