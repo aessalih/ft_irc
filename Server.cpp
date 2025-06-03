@@ -88,6 +88,7 @@ int Server::run() {
 				std::cout << "Client disconnected (fd: " << fds[i].fd << ")\n";
 				close(fds[i].fd);
 				fds.erase(fds.begin() + i);
+				clients.erase(clients.begin() + i - 1);
 				i--;
 			}
 		}
@@ -124,6 +125,7 @@ void Server::handleClientMessage(size_t i) {
 		std::cout << "Client disconnected (fd : " << client_fd << ")\n";
 		close(client_fd);
 		fds.erase(fds.begin() + i);
+		clients.erase(clients.begin() + i - 1);
 		return ;
 	}
 	// check if client is registered
@@ -187,20 +189,20 @@ int	Server::check_password(char *buffer, int fd) {
 	return 0;
 	pass = strtok(NULL, " ");
 	if (!pass) {
-		response = ":azirc 461 pass :need more params\r\n";
+		response = ":irc 461 pass :need more params\r\n";
 		send(fd, response.c_str() , response.size(), 0);
 		return 0;
 	}
 	password = pass;
 	password.erase(password.find_last_not_of("\r\n") + 1);
 	if (password.empty()) {
-		response = ":azirc 461 pass :need more params\r\n";
+		response = ":irc 461 pass :need more params\r\n";
 		send(fd, response.c_str() , response.size(), 0);
 		return 0;
 	}
 	if (password == this->password)
 		return 1;
-	response = ":azirc 461 pass :need more params\r\n";
+	response = ":irc 461 pass :need more params\r\n";
 	send(fd, response.c_str() , response.size(), 0);
 	return 0;
 }
@@ -244,18 +246,17 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 	else if (name == "USER") {
 		if (split1(newBuffer).size() != 4) {
 			response = ":irc 461 user : invalid username\r\n";
+			send(fd, response.c_str(), response.size(), 0);
+			return 0;
 		}
 		token = strtok(NULL, " ");
 		if (!token) {
-			send(fd, "\033[1;31mENTER A VALID USERNAME(4-16 PRINTABLE CHARACTER)\033[0m\n", 61, 0);
+			response = ":irc 461 user : invalid username\r\n";
+			send(fd, response.c_str(), response.size(), 0);
 			return 0;
 		}
 		name = token;
 		name.erase(name.find_last_not_of("\n") + 1);
-		if (name.length() < 4 || name.length() > 16) {
-			send(fd, "\033[1;31mENTER A VALID USERNAME(4-16 PRINTABLE CHARACTER)\033[0m\n", 61, 0);
-			return 0;
-		}
 		clients[i].setUsername(name);
 		if (!clients[i].getNickname().empty())
 			return 1;
@@ -285,7 +286,7 @@ std::vector<std::string> split1(const std::string &s){
 	int flag = 0;
 
 	for (size_t i = 0; i < s.length(); i++) {
-		if (flag == 0 && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n')) {
+		if (flag == 0 && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || '\r')) {
 			tokens.push_back(currentWord);
 			currentWord.clear();
 			inWord = false;

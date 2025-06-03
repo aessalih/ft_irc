@@ -1,7 +1,7 @@
 #include "Server.hpp"
 
 void	program_init() {
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < 3; i++) {
 		std::cout << RUNNING << std::endl;
 		sleep(1);
 	}
@@ -10,6 +10,7 @@ void	program_init() {
 int	check_input(char **av) {
 	int	i = 0;
 	int	has = 0;
+	std::string pass = av[2];
 
 	while (av[2][i]) {
 		if (av[2][i] < 33 || av[2][i] > 126) {
@@ -18,8 +19,21 @@ int	check_input(char **av) {
 		}
 		i++;
 	}
-	if (has == 1) {
-		std::cerr << "\033[1;31m--THE PASSWORD MUST HAVE PRINTABLE CHARACTER ONLY(SPACE EXCLUDED)--\033[0m\n";
+	i = 0;
+	while (av[1][i]) {
+		if (av[1][i] < '0' || av[1][i] > '9') {
+			std::cerr << "\033[1;31m--ENTER A VALID PORT NUMBER--\033[0m\n";
+			return -1;
+		}
+		i++;
+	}
+	int num = std::atoi(av[1]);
+	if (num <= 1023 || num > 65535) {
+		std::cerr << "\033[1;31m--ENTER A VALID PORT NUMBER [1024-65535]--\033[0m\n";
+		return -1;
+	}
+	if (has == 1 || pass.length() < 1) {
+		std::cerr << "\033[1;31m--THE PASSWORD MUST HAVE PRINTABLE CHARACTER ONLY(WHITE SPACES EXCLUDED)--\033[0m\n";
 		return -1;
 	}
 	return (0);

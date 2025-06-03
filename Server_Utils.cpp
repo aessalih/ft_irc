@@ -248,7 +248,7 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
 
 void Server::handleKick(size_t i, int client_fd, const std::vector<std::string>& tokens) {
     if (tokens.size() < 3) {
-        std::string error_msg = ": 461 " +  clients[i -1].getNickname() + " :Not enough parameters\n";
+        std::string error_msg = ": 461 " +  clients[i -1].getNickname() + " :Not enough parameters\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -312,14 +312,14 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string>&
     }
 
     if (!target_found) {
-        std::string error_msg = ": 441 " + clients[i - 1].getNickname() + " " + target_nick + " " +channel_name +" :They aren't on that channel\n";
+        std::string error_msg = ": 441 " + clients[i - 1].getNickname() + " " + target_nick + " " +channel_name +" :They aren't on that channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
 
     // check if kicker is creator or operator
     if (target_channel->getCreator() != clients[i - 1] && !target_channel->isOperator(clients[i - 1])) {
-        std::string error_msg = ": 482 " + clients[i - 1].getNickname() + " :You're not channel a operator\n";
+        std::string error_msg = ": 482 " + clients[i - 1].getNickname() + " :You're not channel a operator\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -520,14 +520,14 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
 
 void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>& tokens) {
     if (tokens.size() < 2) {
-        std::string error_msg = ": 461 " + clients[i - 1].getNickname() + " :Not enough parameters\n";
+        std::string error_msg = ": 461 " + clients[i - 1].getNickname() + " :Not enough parameters\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
 
     std::string channel_name = tokens[1];
     if (channel_name[0] != '#') {
-        std::string error_msg = ": 403 " + clients[i - 1].getNickname() + " " + channel_name + " :No such channel\n";
+        std::string error_msg = ": 403 " + clients[i - 1].getNickname() + " " + channel_name + " :No such channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -558,14 +558,14 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
     }
 
     if (!user_in_channel) {
-        std::string error_msg = ": 442 "  + clients[i - 1].getNickname() + " "  + channel_name + " :You're not on that channel\n";
+        std::string error_msg = ": 442 "  + clients[i - 1].getNickname() + " "  + channel_name + " :You're not on that channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
 
     // if no mode change requested, show current modes
     if (tokens.size() == 2) {
-        std::string mode_msg = ": 324 " + clients[i - 1].getNickname() + " " + channel_name + " " + target_channel->get_mode() + "\n";
+        std::string mode_msg = ": 324 " + clients[i - 1].getNickname() + " " + channel_name + " " + target_channel->get_mode() + "\r\n";
         send(client_fd, mode_msg.c_str(), mode_msg.length(), 0);
         return;
     }
@@ -573,7 +573,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
     // parse mode change
     std::string mode_str = tokens[2];
     if (mode_str.length() < 2 || (mode_str[0] != '+' && mode_str[0] != '-')) {
-        std::string error_msg = ": 472 " + mode_str + " :is unknown mode char to me\n";
+        std::string error_msg = ": 472 " + mode_str + " :is unknown mode char to me\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -588,14 +588,14 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
 
     // special case for +o/-o which only creator can use
     if (mode_char == 'o' && target_channel->getCreator() != clients[i - 1]) {
-        std::string error_msg = "482 " + channel_name + " :You're not channel creator\n";
+        std::string error_msg = "482 " + channel_name + " :You're not channel creator\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
 
     // for other modes, check if user has permission
     if (!has_permission) {
-        std::string error_msg = "482 " + channel_name + " :You're not channel operator\n";
+        std::string error_msg = "482 " + channel_name + " :You're not channel operator\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -611,7 +611,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
         case 'k':
             if (is_adding) {
                 if (tokens.size() < 4) {
-                    std::string error_msg = "461 MODE :Not enough parameters\n";
+                    std::string error_msg = "461 MODE :Not enough parameters\r\n";
                     send(client_fd, error_msg.c_str(), error_msg.length(), 0);
                     return;
                 }
@@ -624,7 +624,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
             break;
         case 'o':
             if (tokens.size() < 4) {
-                std::string error_msg = "461 MODE :Not enough parameters\n";
+                std::string error_msg = "461 MODE :Not enough parameters\r\n";
                 send(client_fd, error_msg.c_str(), error_msg.length(), 0);
                 return;
             }
@@ -647,7 +647,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
         case 'l':
             if (is_adding) {
                 if (tokens.size() < 4) {
-                    std::string error_msg = "461 MODE :Not enough parameters\n";
+                    std::string error_msg = "461 MODE :Not enough parameters\r\n";
                     send(client_fd, error_msg.c_str(), error_msg.length(), 0);
                     return;
                 }
@@ -659,7 +659,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string>&
             target_channel->setMode('l', value);
             break;
         default:
-            std::string error_msg = ": 472 " + std::string(1, mode_char) + " :is unknown mode char to me\n";
+            std::string error_msg = ": 472 " + std::string(1, mode_char) + " :is unknown mode char to me\r\n";
             send(client_fd, error_msg.c_str(), error_msg.length(), 0);
             return;
     }
