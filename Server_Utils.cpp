@@ -144,7 +144,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string>&
 }
 
 void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::string>& tokens) {
-    if (tokens.size() < 3) {
+    if (tokens.size() < 2) {
         std::string error_msg = ": 461 " + clients[i - 1].getNickname() + " :Not enough parameters.\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
@@ -176,8 +176,8 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
         }
     }
 
-    // check if message is empty after processing
-    if (message.empty()) {
+    // check if message is empty or only whitespace after processing
+    if (message.empty() || message.find_first_not_of(" \t\r\n") == std::string::npos) {
         std::string error_msg = ": 412 " + clients[i - 1].getNickname() + " :No text to send\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
@@ -219,7 +219,7 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
         // send message to all clients in channel
         std::string privmsg;
         // Format message without @ prefix for operators
-        privmsg = ":" + clients[i - 1].getNickname() + "!~" + clients[i - 1].getUsername() + "@localhost PRIVMSG " + target + " :";
+        privmsg = ":" + clients[i - 1].getNickname() + "!" + clients[i - 1].getUsername() + "@localhost PRIVMSG " + target + " :";
         privmsg += message + "\r\n";
         for (size_t j = 0; j < channel_clients.size(); j++) {
             if (channel_clients[j].getFd() != clients[i - 1].getFd()) { // Don't send to self
@@ -295,7 +295,7 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string>&
     }
 
     if (!kicker_in_channel) {
-        std::string error_msg = ": 442 " + target_nick  + " " + channel_name + " :You're not on that channel\r\n";
+        std::string error_msg = ": 442 " + clients[i - 1].getNickname() + " " + channel_name + " :You're not on that channel\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
         return;
     }
@@ -480,10 +480,9 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
         else {
             std::string msg = ": 332 " + clients[i - 1].getNickname() + " " + channel_name + " :" + topic + "\r\n";
             send(client_fd, msg.c_str(), msg.length(), 0);
-            // Add RPL_TOPICWHOTIME
-            time_t now = time(0);
+            //  topic_set_time
             std::stringstream ss;
-            ss << now;
+            ss << target_channel->get_topic_time();
             std::string who_time_msg = ": 333 " + clients[i - 1].getNickname() + " " + channel_name + " " + 
                                      target_channel->getCreator().getNickname() + " " + ss.str() + "\r\n";
             send(client_fd, who_time_msg.c_str(), who_time_msg.length(), 0);
@@ -491,30 +490,14 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
         return;
     }
 
-    // combine remaining tokens for topic
-    std::string new_topic;
-    for (size_t j = 2; j < tokens.size(); j++) {
-        if (j > 2) new_topic += " ";
-        if (j == 2 && !tokens[j].empty() && tokens[j][0] == ':') {
-            new_topic += tokens[j].substr(1);
-        } else {
-            new_topic += tokens[j];
-        }
-    }
-
-    // remove trailing newline if present
-    if (!new_topic.empty() && new_topic[new_topic.size() - 1] == '\n') {
-        new_topic.erase(new_topic.size() - 1);
-    }
+    std::string new_topic = tokens[2];
 
     target_channel->set_topic(new_topic);
     
     // notify all channel members of topic change
-    // :" + clients[i - 1].getNickname() + "!" + clients[i - 1].getUsername() + "@127.0.0.1 KICK " + channel_name + " " + target_nick + " :Yeet Out\r\n";
     std::string topic_msg = ": 332 " + clients[i - 1].getNickname() + "!" + clients[i -1].getUsername() + "@127.0.0.1 " + channel_name + " :" + new_topic + "\r\n";
     for (size_t j = 0; j < channel_clients.size(); j++) {
         send(channel_clients[j].getFd(), topic_msg.c_str(), topic_msg.length(), 0);
-        // Add RPL_TOPICWHOTIME for each member
     }
 }
 

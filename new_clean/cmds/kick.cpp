@@ -1,0 +1,75 @@
+#include "../Server.hpp"
+
+void Server::handleKick(size_t i, int client_fd, const std::vector<std::string> &tokens) {
+    Client &client = clients[i - 1];
+    const std::string &nickname = client.getNickname();
+
+    if (tokens.size() < 3) {
+        sendError(client_fd, 461, nickname, "", "Not enough parameters");
+        return;
+    }
+
+    std::string channel_name = tokens[1];
+    std::string target_nick = tokens[2];
+
+    if (!isValidKickChannelName(channel_name)) {
+        sendError(client_fd, 403, nickname, channel_name, "No such channel");
+        return;
+    }
+
+    Channel *target_channel = findChannelByName(channel_name);
+    if (!target_channel) {
+        sendError(client_fd, 403, nickname, channel_name, "No such channel");
+        return;
+    }
+
+    if (!isUserInChannel(target_channel, client)) {
+        sendError(client_fd, 442, nickname, channel_name, "You're not on that channel");
+        return;
+    }
+
+    Client *target_client = findClientInChannel(target_channel, target_nick);
+    if (!target_client) {
+        sendError(client_fd, 441, nickname, target_nick, "They aren't on that channel");
+        return;
+    }
+
+    if (!isUserOperatorOrCreator(target_channel, client)) {
+        sendError(client_fd, 482, nickname, "", "You're not channel a operator");
+        return;
+    }
+
+    target_channel->delete_client(*target_client);
+
+    sendKickMessage(target_channel, client, *target_client, channel_name, target_nick);
+}
+
+bool Server::isValidKickChannelName(const std::string &name) {
+    return (!name.empty() && name[0] == '#');
+}
+
+
+Client *Server::findClientInChannel(Channel *channel, const std::string &target_nick) {
+    const std::vector<Client> &channel_clients = channel->get_clients();
+    for (size_t j = 0; j < channel_clients.size(); ++j) {
+        if (channel_clients[j].getNickname() == target_nick)
+            return const_cast<Client*>(&channel_clients[j]);
+    }
+    return NULL;
+}
+
+bool Server::isUserOperatorOrCreator(Channel *channel, Client& client) {
+    return (channel->getCreator() == client || channel->isOperator(client));
+}
+
+void Server::sendKickMessage(Channel *channel, Client &kicker, Client &target, const std::string &channel_name, const std::string &target_nick) {
+    const std::vector<Client> &channel_clients = channel->get_clients();
+    std::string kick_msg = ":" + kicker.getNickname() + "!" + kicker.getUsername() + "@127.0.0.1 KICK " +
+                           channel_name + " " + target_nick + " :Yeet Out\r\n";
+
+    for (size_t j = 0; j < channel_clients.size(); ++j) {
+        send(channel_clients[j].getFd(), kick_msg.c_str(), kick_msg.length(), 0);
+    }
+
+    send(target.getFd(), kick_msg.c_str(), kick_msg.length(), 0);
+}

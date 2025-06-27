@@ -1,6 +1,6 @@
 #include "Channel.hpp"
 
-Channel::Channel() : name(""), key(-1), topic(""), mode(""), current_clients(0), max_client(-1),
+Channel::Channel() : name(""), key(""), topic(""), mode(""), current_clients(0), max_client(-1),
 	creator(-1), invite_only(false), topic_restricted(false) {
 	channel_mode.i = -1;
 	channel_mode.t = -1;
@@ -10,7 +10,7 @@ Channel::Channel() : name(""), key(-1), topic(""), mode(""), current_clients(0),
 	topic_set_time = 0;
 }
 
-Channel::Channel(std::string name, int key) : name(name), key(key), topic(""), mode(""), current_clients(0), max_client(-1),
+Channel::Channel(std::string name, std::string key) : name(name), key(key), topic(""), mode(""), current_clients(0), max_client(-1),
 	creator(-1), invite_only(false), topic_restricted(false) {
 	channel_mode.i = -1;
 	channel_mode.t = -1;
@@ -65,7 +65,7 @@ void Channel::set_mode(std::string new_mode) {
 }
 
 std::string Channel::get_mode() const {
-	// If mode string is empty, return empty string
+	// if mode string is empty, return empty string
 	if (mode.empty()) {
 		return "";
 	}
@@ -96,12 +96,8 @@ std::string Channel::get_name() const {
 	return name;
 }
 
-int Channel::get_key() const {
+std::string Channel::get_key() const {
 	return key;
-}
-
-void Channel::set_key(int new_key) {
-	key = new_key;
 }
 
 void Channel::add_client(Client &client) {
@@ -137,9 +133,9 @@ bool Channel::isInviteOnly() const { return invite_only; }
 void Channel::setTopicRestricted(bool value) { topic_restricted = value; }
 bool Channel::isTopicRestricted() const { return topic_restricted; }
 
-void Channel::setKey(int new_key) { key = new_key; }
-void Channel::removeKey() { key = -1; }
-bool Channel::hasKey() const { return key != -1; }
+void Channel::setKey(std::string new_key) { key = new_key; }
+void Channel::removeKey() { key = ""; }
+bool Channel::hasKey() const { return key != ""; }
 
 void Channel::setMaxClients(int max) { max_client = max; }
 void Channel::removeUserLimit() { max_client = -1; }

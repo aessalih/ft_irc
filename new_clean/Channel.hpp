@@ -16,7 +16,7 @@ typedef struct mode {
 class Channel {
     private:
         std::string         name;
-        int                 key;// string
+        std::string         key; // string
         std::string         topic;
         std::string         mode;
         int                 current_clients;
@@ -34,7 +34,7 @@ class Channel {
 
     public:
         Channel();  // default constructor
-        Channel(std::string name, int key);
+        Channel(std::string name, std::string key);
         Channel(const Channel &other);
         Channel &operator=(const Channel &other);
         ~Channel();
@@ -46,8 +46,10 @@ class Channel {
         void            set_max_clients(int max);
         void            remove_user_limit();
         std::string     get_name() const;
-        int             get_key() const;
-        void            set_key(int new_key);
+        std::string     get_key() const;
+        void            setKey(std::string new_key);
+        void            removeKey();
+        bool            hasKey() const;
         void            add_client(Client &client);
         void            delete_client(Client &client);
         
@@ -65,26 +67,22 @@ class Channel {
         void setTopicRestricted(bool value);
         bool isTopicRestricted() const;
 
-        void setKey(int new_key);
-        void removeKey();
-        bool hasKey() const;
-
         void setMaxClients(int max);
         void removeUserLimit();
         bool hasUserLimit() const;
 
         // operator management
-        void addOperator(const Client& client);
-        void removeOperator(const Client& client);
-        bool isOperator(const Client& client) const;
+        void addOperator(const Client &client);
+        void removeOperator(const Client &client);
+        bool isOperator(const Client &client) const;
 
         // mode management
         void setMode(char mode, int value);
         int getMode(char mode) const;
         void updateModeString();
-        const MODE& getChannelMode() const;
+        const MODE &getChannelMode() const;
 
-         const std::vector<Client>& get_invited_users() const;
+         const std::vector<Client> &get_invited_users() const;
         int get_max_clients() const;
         void add_invited_user(const Client &client);
         void remove_invited_user(const Client &client);
