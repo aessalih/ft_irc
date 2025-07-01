@@ -154,28 +154,35 @@ void Server::handleClientMessage(size_t i) {
 	if (tokens.empty())
 		return;
 	std::string cmd = tokens[0];
-	if (cmd == "JOIN") {
+	if (cmd == "JOIN" || cmd == "join") {
         handleJoin(i, client_fd, tokens);
     }
-    else if (cmd == "PRIVMSG") {
+    else if (cmd == "PRIVMSG" || cmd == "privmsg") {
         handlePrivmsg(i, client_fd, tokens);
     }
-    else if (cmd == "KICK") {
+    else if (cmd == "KICK" || cmd ==  "kick") {
         handleKick(i, client_fd, tokens);
     }
-    else if (cmd == "INVITE") {
+    else if (cmd == "INVITE" || cmd == "invite") {
         handleInvite(i, client_fd, tokens);
     }
-    else if (cmd == "TOPIC") {
+    else if (cmd == "TOPIC" || cmd == "topic") {
         handleTopic(i, client_fd, tokens);
     }
-    else if (cmd == "MODE") {
+    else if (cmd == "MODE" || cmd == "mode") {
         handleMode(i, client_fd, tokens);
     }
+	else if (cmd == "QUIT" || cmd == "quit") {
+
+	}
+	else if (cmd == "PONG" || cmd == "pong") {
+
+	}
     else if (!cmd.empty()){
         std::string error_msg = ": 421 " + clients[i - 1].getNickname() + " " + cmd + " :Unknown command\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
     }
+	std::cout << " [" << channels[0].get_name() << "]    [" << channels[1].get_name() << "] .\n"; 
 }
 // :PASS aksjdlq weiooiuda
 int	Server::check_password(char *buffer, int fd) {
@@ -306,29 +313,42 @@ std::vector<std::string> split1(const std::string &s){
 }
 
 
+// std::vector<std::string> split(const std::string &s) {
+//     std::vector<std::string> tokens;
+//     std::string currentWord;
+//     bool inWord = false;
+
+//     for (size_t i = 0; i < s.length(); ++i) {
+//         char c = s[i];
+//         if (c == ' ' || c == '\t' || c == '\n') {
+//             if (inWord) {  // End of a word
+//                 tokens.push_back(currentWord);
+//                 currentWord.clear();
+//                 inWord = false;
+//             }
+//         } else {
+//             currentWord += c;
+//             inWord = true;
+//         }
+//     }
+
+//     // Add the last word if it exists
+//     if (inWord) {
+//         tokens.push_back(currentWord);
+//     }
+
+//     return tokens;
+// }
+
+
 std::vector<std::string> split(const std::string &s) {
-    std::vector<std::string> tokens;
-    std::string currentWord;
-    bool inWord = false;
+	std::istringstream			stream(s);
+	std::vector<std::string>	tokens;
+	std::string					token;
 
-    for (size_t i = 0; i < s.length(); ++i) {
-        char c = s[i];
-        if (c == ' ' || c == '\t' || c == '\n') {
-            if (inWord) {  // End of a word
-                tokens.push_back(currentWord);
-                currentWord.clear();
-                inWord = false;
-            }
-        } else {
-            currentWord += c;
-            inWord = true;
-        }
-    }
-
-    // Add the last word if it exists
-    if (inWord) {
-        tokens.push_back(currentWord);
-    }
-
-    return tokens;
+	while (stream >> token) {
+		tokens.push_back(token);
+		token.clear();
+	}
+	return tokens;
 }
