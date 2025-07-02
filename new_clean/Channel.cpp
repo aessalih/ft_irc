@@ -1,7 +1,7 @@
 #include "Channel.hpp"
 
 Channel::Channel() : name(""), key(""), topic(""), mode(""), current_clients(0), max_client(-1),
-	creator(-1), invite_only(false), topic_restricted(false) {
+	creator(-1, ""), invite_only(false), topic_restricted(false) {
 	channel_mode.i = -1;
 	channel_mode.t = -1;
 	channel_mode.k = -1;
@@ -11,7 +11,7 @@ Channel::Channel() : name(""), key(""), topic(""), mode(""), current_clients(0),
 }
 
 Channel::Channel(std::string name, std::string key) : name(name), key(key), topic(""), mode(""), current_clients(0), max_client(-1),
-	creator(-1), invite_only(false), topic_restricted(false) {
+	creator(-1, ""), invite_only(false), topic_restricted(false) {
 	channel_mode.i = -1;
 	channel_mode.t = -1;
 	channel_mode.k = -1;

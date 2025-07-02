@@ -6,12 +6,13 @@
 class Client {
 	private:
 		int fd;
+		std::string ip;
 		std::string nickname; 
 		std::string username;
 		bool	have_pass;
 		bool    isRegistered;
 	public:
-		Client(int	fd);
+		Client(int	fd, const std::string &ip);
 		Client(const Client& obj);
 		Client& operator=(const Client& obj);
 		~Client();
@@ -24,6 +25,7 @@ class Client {
 		const std::string& getUsername(void) const;
 		const bool& getIsRegistered(void) const;
 		const bool& getHavePass(void) const;
+		const std::string &getIp(void) const;
 		bool operator==(const Client& obj) const;
 		bool operator!=(const Client& obj) const;
 };

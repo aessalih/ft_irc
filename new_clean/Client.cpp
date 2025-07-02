@@ -1,16 +1,17 @@
 #include "Client.hpp"
 
 
-Client::Client(int fd) : fd(fd), nickname(""), username(""), have_pass(false), isRegistered(false) {
+Client::Client(int fd, const std::string& ip) : fd(fd), ip(ip), nickname(""), username(""), have_pass(false), isRegistered(false) {
 }
 
-Client::Client(const Client& obj) : fd(obj.fd), nickname(obj.nickname), username(obj.username),
+Client::Client(const Client& obj) : fd(obj.fd), ip(obj.ip), nickname(obj.nickname), username(obj.username),
 	have_pass(obj.have_pass), isRegistered(obj.isRegistered) {
 }
 
 Client& Client::operator=(const Client& obj) {
 	if (this != &obj) {
 		fd = obj.fd;
+		ip = obj.ip;
 		nickname = obj.nickname;
 		username = obj.username;
 		have_pass = obj.have_pass;
@@ -56,6 +57,10 @@ const bool& Client::getIsRegistered(void) const {
 
 const bool& Client::getHavePass(void) const {
 	return have_pass;
+}
+
+const std::string &Client::getIp(void) const {
+	return ip;
 }
 
 bool Client::operator==(const Client& obj) const {

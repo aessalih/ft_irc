@@ -111,7 +111,14 @@ int	Server::handleNewClients()
 	newFd.events = POLLIN;
 	newFd.revents = 0;
 	fds.push_back(newFd);
-	Client	client(newFd.fd);
+	char ip_str[INET_ADDRSTRLEN];
+	std::string ip;
+	if (inet_ntop(AF_INET, &clientAddr.sin_addr, ip_str, INET_ADDRSTRLEN) != NULL) {
+		ip = ip_str;
+	} else {
+		ip = "unknown";
+	}
+	Client client(newFd.fd, ip);
 	clients.push_back(client);
 	return (1);
 }
