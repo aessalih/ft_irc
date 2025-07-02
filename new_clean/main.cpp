@@ -39,7 +39,13 @@ int	check_input(char **av) {
 	return (0);
 }
 
+void v()
+{
+	system("lsof -c ircserv");
+}
+
 int main(int ac, char **av) {
+	atexit(v);
 	program_init();
 	if (ac != 3) {
 		std::cerr << ERROR << std::endl;

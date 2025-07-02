@@ -106,7 +106,6 @@ bool Server::isClientAlreadyInChannel(Channel *channel, Client &client, int clie
 
 void Server::notifyJoin(Channel *channel, Client &client, const std::string &name) {
     const std::vector<Client> &clients_list = channel->get_clients();
-    // std::string join_msg = ":" + client.getNickname() + "!" + client.getUsername() + "@127.0.0.1 JOIN " + name + "\r\n";
     std::string join_msg = ":" + client.getNickname() + "!" + client.getUsername() + "@" + client.getIp() + " JOIN " + name + "\r\n";
 
     for (size_t j = 0; j < clients_list.size(); ++j) {

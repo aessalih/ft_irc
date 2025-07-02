@@ -52,7 +52,7 @@ Client *Server::findGlobalClientByNick(const std::string &target_nick) {
 }
 
 void Server::sendInviteMessages(Channel *channel, Client &inviter, Client *target_client, const std::string &channel_name, const std::string &target_nick, int inviter_fd) {
-    std::string invite_msg = ":" + inviter.getNickname() + "!" + inviter.getUsername() + "@127.0.0.1 INVITE " + target_nick + " " + channel_name + "\r\n";
+    std::string invite_msg = ":" + inviter.getNickname() + "!" + inviter.getUsername() + "@" + inviter.getIp() + " INVITE " + target_nick + " " + channel_name + "\r\n";
     send(target_client->getFd(), invite_msg.c_str(), invite_msg.length(), 0);
 
     channel->add_invited_user(*target_client);

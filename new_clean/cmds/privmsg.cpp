@@ -1,6 +1,7 @@
 #include "../Server.hpp"
+#include <fstream>
 
-void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::string> &tokens) {
+void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::string> &tokens, const std::string &msg) {
     Client &client = clients[i - 1];
     const std::string &nickname = client.getNickname();
 
@@ -10,9 +11,20 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
     }
 
     std::string target = tokens[1];
-    std::string message = extractMessage(tokens);
+    std::string message;
+    if (tokens.size() > 2 && tokens[2][0] == ':') {
+        size_t pos =  msg.find(':');
+        if (pos != std::string::npos) {
 
-    cleanMessage(message);
+            message =  msg.substr(pos + 1);
+            message = message.substr(0, message.find_last_of("\n") - 1);
+            }
+    }
+    else {
+        message = extractMessage(tokens);
+        cleanMessage(message);
+    }
+
 
     if (message.empty() || message.find_first_not_of(" \t\r\n") == std::string::npos) {
         sendError(client_fd, 412, nickname, "", "No text to send");
@@ -76,7 +88,10 @@ void Server::handleChannelPrivmsg(const std::string &target, const std::string &
 void Server::handleUserPrivmsg(const std::string &target, const std::string &msg, Client &sender, int client_fd) {
     for (size_t j = 0; j < clients.size(); ++j) {
         if (clients[j].getNickname() == target) {
-            std::string privmsg = ":" + sender.getNickname() + "!~" + sender.getUsername() + "@localhost PRIVMSG " + target + " :" + msg + "\r\n";
+            std::string privmsg = ":" + sender.getNickname() + "!~" + sender.getUsername() + "@" + sender.getIp() +" PRIVMSG " + target + " :" + msg + "\r\n";
+
+    std::cout<< "MSG: "+privmsg << std::endl;
+
             send(clients[j].getFd(), privmsg.c_str(), privmsg.length(), 0);
             return;
         }
@@ -104,7 +119,7 @@ bool Server::isUserInChannel(Channel *channel, Client &client) {
 
 void Server::sendPrivmsgToChannel(Channel *channel, const std::string &msg, Client &sender) {
     const std::vector<Client> &channel_clients = channel->get_clients();
-    std::string privmsg = ":" + sender.getNickname() + "!" + sender.getUsername() + "@localhost PRIVMSG " + channel->get_name() + " :" + msg + "\r\n";
+    std::string privmsg = ":" + sender.getNickname() + "!" + sender.getUsername() + "@" + sender.getIp() +" PRIVMSG " + channel->get_name() + " :" + msg + "\r\n";
 
     for (size_t j = 0; j < channel_clients.size(); ++j) {
         if (channel_clients[j].getFd() != sender.getFd()) {

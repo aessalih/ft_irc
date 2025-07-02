@@ -64,7 +64,7 @@ bool Server::isUserOperatorOrCreator(Channel *channel, Client& client) {
 
 void Server::sendKickMessage(Channel *channel, Client &kicker, Client &target, const std::string &channel_name, const std::string &target_nick) {
     const std::vector<Client> &channel_clients = channel->get_clients();
-    std::string kick_msg = ":" + kicker.getNickname() + "!" + kicker.getUsername() + "@127.0.0.1 KICK " +
+    std::string kick_msg = ":" + kicker.getNickname() + "!" + kicker.getUsername() + "@" + kicker.getIp() + " KICK " +
                            channel_name + " " + target_nick + " :Yeet Out\r\n";
 
     for (size_t j = 0; j < channel_clients.size(); ++j) {

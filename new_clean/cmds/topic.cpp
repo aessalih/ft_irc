@@ -68,7 +68,7 @@ void Server::sendCurrentTopic(int client_fd, Client &client, Channel &channel, c
 void Server::setNewTopicAndNotify(Client &client, Channel &channel, const std::string &new_topic, const std::string &channel_name) {
     channel.set_topic(new_topic);
 
-    std::string topic_msg = ": 332 " + client.getNickname() + "!" + client.getUsername() + "@127.0.0.1 " +
+    std::string topic_msg = ": 332 " + client.getNickname() + "!" + client.getUsername() + "@" + client.getIp() + " " +
                             channel_name + " :" + new_topic + "\r\n";
 
     const std::vector<Client> &channel_clients = channel.get_clients();

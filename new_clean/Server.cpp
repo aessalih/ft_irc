@@ -157,6 +157,7 @@ void Server::handleClientMessage(size_t i) {
 
 	// parse the message
 	std::string msg(buffer);
+	std::cout << " {{ "+ msg + " }}" << std::endl;
 	std::vector<std::string> tokens = split(msg);
 	if (tokens.empty())
 		return;
@@ -165,7 +166,7 @@ void Server::handleClientMessage(size_t i) {
         handleJoin(i, client_fd, tokens);
     }
     else if (cmd == "PRIVMSG" || cmd == "privmsg") {
-        handlePrivmsg(i, client_fd, tokens);
+        handlePrivmsg(i, client_fd, tokens, msg);
     }
     else if (cmd == "KICK" || cmd ==  "kick") {
         handleKick(i, client_fd, tokens);
@@ -189,7 +190,7 @@ void Server::handleClientMessage(size_t i) {
         std::string error_msg = ": 421 " + clients[i - 1].getNickname() + " " + cmd + " :Unknown command\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
     }
-	std::cout << " [" << channels[0].get_name() << "]    [" << channels[1].get_name() << "] .\n"; 
+	// std::cout << " [" << channels[0].get_name() << "]    [" << channels[1].get_name() << "] .\n"; 
 }
 // :PASS aksjdlq weiooiuda
 int	Server::check_password(char *buffer, int fd) {
@@ -207,6 +208,7 @@ int	Server::check_password(char *buffer, int fd) {
 		return 0;
 	}
 	password = pass;
+	puts(password.erase(password.find_last_not_of("\r\n") + 1).c_str());
 	password.erase(password.find_last_not_of("\r\n") + 1);
 	if (password.empty()) {
 		response = ":irc 461 pass :need more params\r\n";
@@ -352,6 +354,8 @@ std::vector<std::string> split(const std::string &s) {
 	std::istringstream			stream(s);
 	std::vector<std::string>	tokens;
 	std::string					token;
+
+	// if ':'
 
 	while (stream >> token) {
 		tokens.push_back(token);

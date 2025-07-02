@@ -102,7 +102,7 @@ class Server {
 		int	check_names(std::vector<Client> &clients, size_t i, char *buffer, int fd);
 
 		void handleJoin(size_t i, int client_fd, const std::vector<std::string> &tokens);
-    	void handlePrivmsg(size_t i, int client_fd, const std::vector<std::string> &tokens);
+    	void handlePrivmsg(size_t i, int client_fd, const std::vector<std::string> &tokens, const std::string &msg);
 		void handleKick(size_t i, int client_fd, const std::vector<std::string> &tokens);
    		void handleInvite(size_t i, int client_fd, const std::vector<std::string> &tokens);
    		void handleTopic(size_t i, int client_fd, const std::vector<std::string> &tokens);
