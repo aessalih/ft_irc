@@ -46,6 +46,7 @@ int	Server::init() {
 	}
 	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
 		std::cerr << ERROR << std::endl;
+		close(sockfd);
 		std::cerr << "\033[1;31mSET SOCKET OPRION FAILS\033[0m\n";
 		return -1;
 	}
@@ -54,11 +55,13 @@ int	Server::init() {
 	address.sin_port = htons(this->port);
 	if (bind(sockfd, (struct sockaddr*)&address, addrlen) == -1) {
 		std::cerr << ERROR << std::endl;
+		close(sockfd);
 		std::cerr << "\033[1;31mBIND FUNCTION FAILS\033[0m\n";
 		return -1;
 	}
 	if (listen(sockfd, 3) == -1) {
 		std::cerr << ERROR << std::endl;
+		close(sockfd);
 		std::cerr << "\033[1;31mLISTEN FAILS\033[0m\n";
 		return -1;
 	}
@@ -135,7 +138,7 @@ void Server::handleClientMessage(size_t i) {
 		clients.erase(clients.begin() + i - 1);
 		return ;
 	}
-	std::cout << "[" << buffer << "]" << std::endl;
+	// std::cout << "[" << buffer << "]" << std::endl;
 	// check if client is registered
 	if (clients[i - 1].getIsRegistered() == false) {
 		if (clients[i - 1].getHavePass() == false) {
@@ -156,42 +159,41 @@ void Server::handleClientMessage(size_t i) {
 		std::cout << "client" << i << " = " << clients[i].getNickname() << std::endl;
 	}
 
-	// parse the message
 	std::string msg(buffer);
-	std::cout << " {{ "+ msg + " }}" << std::endl;
 	std::vector<std::string> tokens = split(msg);
 	if (tokens.empty())
 		return;
-	std::string cmd = tokens[0];
-	if (cmd == "JOIN" || cmd == "join") {
+	std::string cmd = toUpperCase(tokens[0]);
+	if (cmd == "JOIN") {
         handleJoin(i, client_fd, tokens);
     }
-    else if (cmd == "PRIVMSG" || cmd == "privmsg") {
+    else if (cmd == "PRIVMSG") {
         handlePrivmsg(i, client_fd, tokens, msg);
     }
-    else if (cmd == "KICK" || cmd ==  "kick") {
+    else if (cmd == "KICK") {
         handleKick(i, client_fd, tokens);
     }
-    else if (cmd == "INVITE" || cmd == "invite") {
+    else if (cmd == "INVITE") {
         handleInvite(i, client_fd, tokens);
     }
-    else if (cmd == "TOPIC" || cmd == "topic") {
+    else if (cmd == "TOPIC") {
         handleTopic(i, client_fd, tokens);
     }
-    else if (cmd == "MODE" || cmd == "mode") {
+    else if (cmd == "MODE") {
         handleMode(i, client_fd, tokens);
     }
-	else if (cmd == "QUIT" || cmd == "quit") {
-
-	}
-	else if (cmd == "PONG" || cmd == "pong") {
-
+	else if (cmd == "QUIT") {
+		std::cout << "\033[1;32mClient " << clients[i - 1].getNickname() << " disconnected\033[0m" << "\n";
+		close(client_fd);
+		fds.erase(fds.begin() + i);
+		// We have to delete the client from channels.
+		clients.erase(clients.begin() + i - 1);
+		return ;
 	}
     else if (!cmd.empty()){
         std::string error_msg = ": 421 " + clients[i - 1].getNickname() + " " + cmd + " :Unknown command\r\n";
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
     }
-	// std::cout << " [" << channels[0].get_name() << "]    [" << channels[1].get_name() << "] .\n"; 
 }
 // :PASS aksjdlq weiooiuda
 int	Server::check_password(char *buffer, int fd) {
@@ -200,6 +202,7 @@ int	Server::check_password(char *buffer, int fd) {
 	std::string response;
 	
 	password.erase(password.find_last_not_of("\r\n") + 1);
+	password = toUpperCase(password);
 	if (password != "PASS")
 	return 0;
 	pass = strtok(NULL, " ");
@@ -231,6 +234,7 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 
 	std::string name = token;
 	name.erase(name.find_last_not_of("\r\n") + 1);
+	name = toUpperCase(name);
 	if (name == "NICK") {
 		token = strtok(NULL, " ");
 		if (!token) {
@@ -363,4 +367,12 @@ std::vector<std::string> split(const std::string &s) {
 		token.clear();
 	}
 	return tokens;
+}
+
+std::string	Server::toUpperCase(std::string s) {
+	std::string newStr = "";
+	for(int i = 0; i < s.size(); i++) {
+		newStr += (char)toupper(s[i]);
+	}
+	return newStr;
 }

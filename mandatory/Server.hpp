@@ -37,7 +37,8 @@ class Server {
 		std::vector<Client>	clients;
 		std::vector<struct pollfd> fds;
 		int	parse_port(char *port);
-		
+
+		std::string	toUpperCase(std::string s);
 		//join
     	bool isValidChannelName(const std::string &name);
     	Channel	*findOrCreateChannel(const std::string &name, const std::string &key, Client &creator);
