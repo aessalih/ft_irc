@@ -12,6 +12,7 @@ class Client {
 		bool	have_pass;
 		bool    isRegistered;
 	public:
+		std::string buffer;
 		Client(int	fd, const std::string &ip);
 		Client(const Client& obj);
 		Client& operator=(const Client& obj);

@@ -138,8 +138,21 @@ void Server::handleClientMessage(size_t i) {
 		clients.erase(clients.begin() + i - 1);
 		return ;
 	}
-	// std::cout << "[" << buffer << "]" << std::endl;
-	// check if client is registered
+	std::string checkBuffer = buffer;
+	if (checkBuffer.find("\n") == std::string::npos) {
+		clients[i - 1].buffer += checkBuffer;
+		return ;
+	}
+	clients[i - 1].buffer += checkBuffer;
+	if (clients[i - 1].buffer.size() > 1023) {
+		std::cout << "\033[1;31mBUFFER OVERFLOWS...TRY AGAIN \033[0m" << std::endl;
+		clients[i - 1].buffer = "";
+		return ;
+	}
+	for (int j = 0; j < clients[i - 1].buffer.size(); j++) {
+		buffer[j] = clients[i - 1].buffer[j];
+	}
+	clients[i - 1].buffer = "";
 	if (clients[i - 1].getIsRegistered() == false) {
 		if (clients[i - 1].getHavePass() == false) {
 			if (check_password(buffer, client_fd)) {
@@ -204,7 +217,7 @@ int	Server::check_password(char *buffer, int fd) {
 	password.erase(password.find_last_not_of("\r\n") + 1);
 	password = toUpperCase(password);
 	if (password != "PASS")
-	return 0;
+		return 0;
 	pass = strtok(NULL, " ");
 	if (!pass) {
 		response = ":irc 461 pass :need more params\r\n";
@@ -212,7 +225,6 @@ int	Server::check_password(char *buffer, int fd) {
 		return 0;
 	}
 	password = pass;
-	puts(password.erase(password.find_last_not_of("\r\n") + 1).c_str());
 	password.erase(password.find_last_not_of("\r\n") + 1);
 	if (password.empty()) {
 		response = ":irc 461 pass :need more params\r\n";
