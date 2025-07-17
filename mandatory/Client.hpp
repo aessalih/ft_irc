@@ -9,6 +9,7 @@ class Client {
 		std::string ip;
 		std::string nickname; 
 		std::string username;
+		std::string inputBuff;
 		bool	have_pass;
 		bool    isRegistered;
 	public:

@@ -38,10 +38,17 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string> 
         sendError(client_fd, 482, nickname, "", "You're not channel a operator");
         return;
     }
-
-    target_channel->delete_client(*target_client);
+    // C++98: declare variables at the top
+    int target_fd;
+    std::string target_username;
+    std::string target_ip;
+    // Optionally, you can copy the nickname, but it's already in target_nick
+    target_fd = target_client->getFd();
+    target_username = target_client->getUsername();
+    target_ip = target_client->getIp();
 
     sendKickMessage(target_channel, client, *target_client, channel_name, target_nick);
+    target_channel->delete_client(*target_client);
 }
 
 bool Server::isValidKickChannelName(const std::string &name) {
@@ -70,6 +77,6 @@ void Server::sendKickMessage(Channel *channel, Client &kicker, Client &target, c
     for (size_t j = 0; j < channel_clients.size(); ++j) {
         send(channel_clients[j].getFd(), kick_msg.c_str(), kick_msg.length(), 0);
     }
-
+    // std::cout << "[" << ", " << kick_msg.c_str() << ", "<< kick_msg.length() << "]" << std::endl;
     send(target.getFd(), kick_msg.c_str(), kick_msg.length(), 0);
 }
