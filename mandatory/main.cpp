@@ -1,5 +1,7 @@
 #include "Server.hpp"
 
+int Server::flag = 1;
+
 void	program_init() {
 	for (int i = 0; i < 3; i++) {
 		std::cout << RUNNING << std::endl;

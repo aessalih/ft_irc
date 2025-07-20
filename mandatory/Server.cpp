@@ -13,6 +13,7 @@ Server::Server() {
 }
 
 Server::Server(char **av) {
+	flag = 1;
 	this->opt = 1;
 	this->addrlen = sizeof(address);
 	memset(buffer, 0, 1024);
@@ -39,6 +40,7 @@ Server::~Server() {
 // methods definition
 int	Server::init() {
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	std::cout << "from init: " << sockfd << std::endl;
 	if (sockfd == -1) {
 		std::cerr << ERROR << std::endl;
 		std::cerr << "\033[1;31mSOCKET FUNCTION FAILS\033[0m\n";
@@ -73,10 +75,29 @@ int	Server::init() {
 	return 0;
 }
 
+void Server::close_fds() {
+	std::cout << std::endl;
+	std::cout << std::endl;
+	for (int i = 0; i < clients.size(); i++) {
+		close(clients[i].getFd());
+	}
+	close(sockfd);
+}
+
+void Server::stopServer(int signalNum) {
+	std::cout << "\033[1;31mSERVER DISCONNECTED\033[0m\n";
+	flag = 0;
+}
+
 int Server::run() {
-	while (true) {
+	std::signal(SIGINT, stopServer);
+	std::signal(SIGTERM, stopServer);
+	std::signal(SIGPIPE, SIG_IGN);
+	while (this->flag) {
 		int	poll_count = poll(fds.data(), fds.size(), -1);
 		if (poll_count < 0) {
+			if (this->flag == 0)
+				break ;
 			std::cerr << "\033[1;31mPOLL FUNCTION FAILS\033[0m\n";
 			return -1;
 		}
@@ -96,6 +117,7 @@ int Server::run() {
 			}
 		}
 	}
+	close_fds();
 	return 0;
 }
 
@@ -268,6 +290,11 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 			response = ":irc 432 * "+ name +" : :Erroneous nickname\r\n";
 			send(fd, response.c_str(), response.size(), 0);
 			////////////////////////////////////////////////////////////
+			return 0;
+		}
+		if (name.size() > 9) {
+			response = ":irc 432 * "+ name +" : :Too long nickname\r\n";
+			send(fd, response.c_str(), response.size(), 0);
 			return 0;
 		}
 		clients[i].setNickname(name);

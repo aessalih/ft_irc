@@ -30,12 +30,12 @@ class Server {
 		int	opt;
 		int	port;
 		int	addrlen;
+		std::vector<Client>	clients;
+		std::vector<struct pollfd> fds;
 		struct pollfd	server_sockfd;
 		char	buffer[1024];
 		std::string	password;
 		std::vector<Channel> channels;
-		std::vector<Client>	clients;
-		std::vector<struct pollfd> fds;
 		int	parse_port(char *port);
 
 		std::string	toUpperCase(std::string s);
@@ -87,6 +87,7 @@ class Server {
         void handleModeOperator(Channel *channel, bool adding, const std::string &param, int client_fd, const std::string &nickname, const std::string &channel_name);
 
 	public:
+		static int flag;
 		// canonical form and parameterize constructor
 		Server();
 		Server(char **av);
@@ -107,7 +108,8 @@ class Server {
 		void handleKick(size_t i, int client_fd, const std::vector<std::string> &tokens);
    		void handleInvite(size_t i, int client_fd, const std::vector<std::string> &tokens);
    		void handleTopic(size_t i, int client_fd, const std::vector<std::string> &tokens);
-		
+		static void stopServer(int signalNum);
+		void close_fds();
 };
 std::vector<std::string> split(const std::string &s);
 std::vector<std::string> split1(const std::string &s);
