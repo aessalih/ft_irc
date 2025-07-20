@@ -1,5 +1,33 @@
 #include "../Server.hpp"
 
+// Helper function to split a string by comma and return a vector of trimmed strings
+static std::vector<std::string> splitByComma(const std::string &input) {
+    std::vector<std::string> result;
+    std::stringstream ss(input);
+    std::string item;
+    while (std::getline(ss, item, ',')) {
+
+        size_t start = item.find_first_not_of(" \t");
+        size_t end = item.find_last_not_of(" \t");
+        if (start != std::string::npos && end != std::string::npos)
+            result.push_back(item.substr(start, end - start + 1));
+        else if (start != std::string::npos)
+            result.push_back(item.substr(start));
+        else
+            result.push_back("");
+    }
+    return result;
+}
+
+// Helper function to validate comma-separated channel names
+static bool isValidCommaSeparatedChannels(const std::string &input) {
+    if (input.empty()) return false;
+    // Allow any number of commas, including consecutive and trailing
+    // No need to check for consecutive commas
+    // No need to check for empty names after split; we'll skip them in handleJoin
+    return true;
+}
+
 void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string> &tokens) {
     Client &client = clients[i - 1];
     const std::string &nickname = client.getNickname();
@@ -9,32 +37,62 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string> 
         return;
     }
 
-    std::string channel_name = tokens[1];
+    std::string channel_names = tokens[1];
     std::string key = "";
     if (tokens.size() >= 3)
         key = tokens[2];
 
+    if (channel_names.find(',') != std::string::npos) {
+        if (!isValidCommaSeparatedChannels(channel_names)) {
+            sendError(client_fd, 403, nickname, channel_names, "Invalid channel list");
+            return;
+        }
+        std::vector<std::string> channels = splitByComma(channel_names);
+        for (size_t idx = 0; idx < channels.size(); ++idx) {
+            std::string &channel_name = channels[idx];
+            if (channel_name.empty()) // Skip empty channel names (from trailing commas)
+                continue;
+            if (!isValidChannelName(channel_name)) {
+                sendError(client_fd, 403, nickname, channel_name, "No such channel");
+                continue;
+            }
+            Channel *target_channel = findOrCreateChannel(channel_name, key, client);
+            if (!canClientJoinChannel(target_channel, client, channel_name, key, client_fd)) {
+                continue;
+            }
+            if (isClientAlreadyInChannel(target_channel, client, client_fd, channel_name)) {
+                continue;
+            }
+            target_channel->add_client(client);
+            notifyJoin(target_channel, client, channel_name);
+            sendTopicIfExists(target_channel, client_fd, nickname, channel_name);
+            sendNamesList(target_channel, client_fd, nickname, channel_name);
+        }
+    } else {
+        std::string &channel_name = channel_names;
+        if (channel_name.empty()) // Skip empty channel name
+            return;
+        if (!isValidChannelName(channel_name)) {
+            sendError(client_fd, 403, nickname, channel_name, "No such channel");
+            return;
+        }
 
-    if (!isValidChannelName(channel_name)) {
-        sendError(client_fd, 403, nickname, channel_name, "No such channel");
-        return;
+        Channel *target_channel = findOrCreateChannel(channel_name, key, client);
+
+        if (!canClientJoinChannel(target_channel, client, channel_name, key, client_fd)) {
+            return;
+        }
+
+        if (isClientAlreadyInChannel(target_channel, client, client_fd, channel_name)) {
+            return;
+        }
+
+        target_channel->add_client(client);
+
+        notifyJoin(target_channel, client, channel_name);
+        sendTopicIfExists(target_channel, client_fd, nickname, channel_name);
+        sendNamesList(target_channel, client_fd, nickname, channel_name);
     }
-
-    Channel *target_channel = findOrCreateChannel(channel_name, key, client);
-
-    if (!canClientJoinChannel(target_channel, client, channel_name, key, client_fd)) {
-        return;
-    }
-
-    if (isClientAlreadyInChannel(target_channel, client, client_fd, channel_name)) {
-        return;
-    }
-
-    target_channel->add_client(client);
-
-    notifyJoin(target_channel, client, channel_name);
-    sendTopicIfExists(target_channel, client_fd, nickname, channel_name);
-    sendNamesList(target_channel, client_fd, nickname, channel_name);
 }
 
 

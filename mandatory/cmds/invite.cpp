@@ -1,5 +1,23 @@
 #include "../Server.hpp"
 
+// Helper function to split a string by comma and return a vector of trimmed strings
+static std::vector<std::string> splitByComma(const std::string &input) {
+    std::vector<std::string> result;
+    std::stringstream ss(input);
+    std::string item;
+    while (std::getline(ss, item, ',')) {
+        size_t start = item.find_first_not_of(" \t");
+        size_t end = item.find_last_not_of(" \t");
+        if (start != std::string::npos && end != std::string::npos)
+            result.push_back(item.substr(start, end - start + 1));
+        else if (start != std::string::npos)
+            result.push_back(item.substr(start));
+        else
+            result.push_back("");
+    }
+    return result;
+}
+
 void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string> &tokens) {
     Client &client = clients[i - 1];
     const std::string &nickname = client.getNickname();
@@ -9,7 +27,7 @@ void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string
         return;
     }
 
-    std::string target_nick = tokens[1];
+    std::string target_nicks = tokens[1];
     std::string channel_name = tokens[2];
 
     if (!isValidKickChannelName(channel_name)) {
@@ -33,13 +51,19 @@ void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string
         return;
     }
 
-    Client *target_client = findGlobalClientByNick(target_nick);
-    if (!target_client) {
-        sendError(client_fd, 401, nickname, target_nick, "No such nick/channel");
-        return;
+    std::vector<std::string> users = splitByComma(target_nicks);
+    for (size_t idx = 0; idx < users.size(); ++idx) {
+        std::string &target_nick = users[idx];
+        if (target_nick.empty()) // skip empty entries
+            continue;
+        Client *target_client = findGlobalClientByNick(target_nick);
+        if (!target_client) {
+            sendError(client_fd, 401, nickname, target_nick, "No such nick/channel");
+            continue ;
+        }
+        sendInviteMessages(target_channel, client, target_client, channel_name, target_nick, client_fd);
     }
 
-    sendInviteMessages(target_channel, client, target_client, channel_name, target_nick, client_fd);
 }
 
 
