@@ -1,4 +1,5 @@
 #include "../Server.hpp"
+#include <sstream>
 
 // Helper function to split a string by comma and return a vector of trimmed strings
 static std::vector<std::string> splitByComma(const std::string &input) {

@@ -1,5 +1,24 @@
 #include "../Server.hpp"
 #include <fstream>
+#include <sstream>
+
+// Helper function to split a string by comma and return a vector of trimmed strings
+static std::vector<std::string> splitByComma(const std::string &input) {
+    std::vector<std::string> result;
+    std::stringstream ss(input);
+    std::string item;
+    while (std::getline(ss, item, ',')) {
+        size_t start = item.find_first_not_of(" \t");
+        size_t end = item.find_last_not_of(" \t");
+        if (start != std::string::npos && end != std::string::npos)
+            result.push_back(item.substr(start, end - start + 1));
+        else if (start != std::string::npos)
+            result.push_back(item.substr(start));
+        else
+            result.push_back("");
+    }
+    return result;
+}
 
 void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::string> &tokens, const std::string &msg) {
     Client &client = clients[i - 1];
@@ -10,12 +29,11 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
         return;
     }
 
-    std::string target = tokens[1];
+    std::string targets = tokens[1];
     std::string message;
     if (tokens.size() > 2 && tokens[2][0] == ':') {
         size_t pos =  msg.find(':');
         if (pos != std::string::npos) {
-
             message =  msg.substr(pos + 1);
             message = message.substr(0, message.find_last_of("\n") - 1);
         }
@@ -25,16 +43,21 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
         cleanMessage(message);
     }
 
-
     if (message.empty() || message.find_first_not_of(" \t\r\n") == std::string::npos) {
         sendError(client_fd, 412, nickname, "", "No text to send");
         return;
     }
 
-    if (isChannelTarget(target)) {
-        handleChannelPrivmsg(target, message, client, client_fd);
-    } else {
-        handleUserPrivmsg(target, message, client, client_fd);
+    std::vector<std::string> targetList = splitByComma(targets);
+    for (size_t idx = 0; idx < targetList.size(); ++idx) {
+        std::string &target = targetList[idx];
+        if (target.empty()) // skip empty entries
+            continue;
+        if (isChannelTarget(target)) {
+            handleChannelPrivmsg(target, message, client, client_fd);
+        } else {
+            handleUserPrivmsg(target, message, client, client_fd);
+        }
     }
 }
 

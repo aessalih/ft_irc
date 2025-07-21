@@ -1,4 +1,5 @@
 #include "../Server.hpp"
+#include <sstream>
 
 // Helper function to split a string by comma and return a vector of trimmed strings
 static std::vector<std::string> splitByComma(const std::string &input) {
@@ -76,19 +77,14 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string> 
             sendError(client_fd, 403, nickname, channel_name, "No such channel");
             return;
         }
-
         Channel *target_channel = findOrCreateChannel(channel_name, key, client);
-
         if (!canClientJoinChannel(target_channel, client, channel_name, key, client_fd)) {
             return;
         }
-
         if (isClientAlreadyInChannel(target_channel, client, client_fd, channel_name)) {
             return;
         }
-
         target_channel->add_client(client);
-
         notifyJoin(target_channel, client, channel_name);
         sendTopicIfExists(target_channel, client_fd, nickname, channel_name);
         sendNamesList(target_channel, client_fd, nickname, channel_name);
