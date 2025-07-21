@@ -93,6 +93,7 @@ int Server::run() {
 	std::signal(SIGINT, stopServer);
 	std::signal(SIGTERM, stopServer);
 	std::signal(SIGPIPE, SIG_IGN);
+	std::signal(SIGQUIT, SIG_IGN);
 	while (this->flag) {
 		int	poll_count = poll(fds.data(), fds.size(), -1);
 		if (poll_count < 0) {
@@ -153,6 +154,7 @@ void Server::handleClientMessage(size_t i) {
 
 	int client_fd = fds[i].fd;
 	int bytes = recv(client_fd, buffer, 1024, 0);
+	sleep(5);
 	if (bytes <= 0) {
 		std::cout << "\033[1;32mClient " << clients[i - 1].getNickname() << " disconnected\033[0m" << "\n";
 		close(client_fd);
