@@ -18,7 +18,7 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
 
             message =  msg.substr(pos + 1);
             message = message.substr(0, message.find_last_of("\n") - 1);
-            }
+        }
     }
     else {
         message = extractMessage(tokens);

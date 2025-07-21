@@ -40,7 +40,6 @@ Server::~Server() {
 // methods definition
 int	Server::init() {
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	std::cout << "from init: " << sockfd << std::endl;
 	if (sockfd == -1) {
 		std::cerr << ERROR << std::endl;
 		std::cerr << "\033[1;31mSOCKET FUNCTION FAILS\033[0m\n";
@@ -85,7 +84,6 @@ void Server::close_fds() {
 }
 
 void Server::stopServer(int signalNum) {
-	std::cout << "\033[1;31mSERVER DISCONNECTED\033[0m\n";
 	flag = 0;
 }
 
@@ -154,7 +152,6 @@ void Server::handleClientMessage(size_t i) {
 
 	int client_fd = fds[i].fd;
 	int bytes = recv(client_fd, buffer, 1024, 0);
-	sleep(5);
 	if (bytes <= 0) {
 		std::cout << "\033[1;32mClient " << clients[i - 1].getNickname() << " disconnected\033[0m" << "\n";
 		close(client_fd);
