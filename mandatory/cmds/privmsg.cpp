@@ -35,7 +35,7 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
         size_t pos =  msg.find(':');
         if (pos != std::string::npos) {
             message =  msg.substr(pos + 1);
-            message = message.substr(0, message.find_last_of("\n") - 1);
+            message = message.substr(0, message.find_last_of("\n"));
         }
     }
     else {
