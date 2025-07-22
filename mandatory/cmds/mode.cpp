@@ -6,6 +6,8 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string> 
         sendError(client_fd, 461, clients[i - 1].getNickname(), "", "Not enough parameters.");
         return;
     }
+    // if (tokens[3] == "+sn")
+    //     return ;
     const std::string &channel_name = tokens[1];
     Channel *target_channel = findChannelByName(channel_name);
     if (!target_channel) {

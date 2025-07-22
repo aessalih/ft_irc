@@ -110,6 +110,7 @@ class Server {
    		void handleTopic(size_t i, int client_fd, const std::vector<std::string> &tokens);
 		static void stopServer(int signalNum);
 		void close_fds();
+		void removeClient(int fd);
 };
 std::vector<std::string> split(const std::string &s);
 std::vector<std::string> split1(const std::string &s);

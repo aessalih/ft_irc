@@ -21,7 +21,6 @@ class Channel {
         std::string         mode;
         int                 current_clients;
         int                 max_client;
-        std::vector<Client> clients;
         std::vector<Client> priveleged_client;
         Client              creator;  // channel creator
         MODE                channel_mode;  // channel mode flags
@@ -33,6 +32,7 @@ class Channel {
         time_t              topic_set_time; // timestamp for when topic was last set
 
     public:
+        std::vector<Client> clients;
         Channel();  // default constructor
         Channel(std::string name, std::string key);
         Channel(const Channel &other);

@@ -109,6 +109,7 @@ int Server::run() {
 			}
 			else if (fds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
 				std::cout << "\033[1;32mClient " << clients[i - 1].getNickname() << " disconnected\033[0m" << "\n";
+				removeClient(fds[i].fd);
 				close(fds[i].fd);
 				fds.erase(fds.begin() + i);
 				clients.erase(clients.begin() + i - 1);
@@ -154,6 +155,7 @@ void Server::handleClientMessage(size_t i) {
 	int bytes = recv(client_fd, buffer, 512, 0);
 	if (bytes <= 0) {
 		std::cout << "\033[1;32mClient " << clients[i - 1].getNickname() << " disconnected\033[0m" << "\n";
+		removeClient(client_fd);
 		close(client_fd);
 		fds.erase(fds.begin() + i);
 		clients.erase(clients.begin() + i - 1);
@@ -218,6 +220,7 @@ void Server::handleClientMessage(size_t i) {
     }
 	else if (cmd == "QUIT") {
 		std::cout << "\033[1;32mClient " << clients[i - 1].getNickname() << " disconnected\033[0m" << "\n";
+		removeClient(client_fd);
 		close(client_fd);
 		fds.erase(fds.begin() + i);
 		// We have to delete the client from channels.
@@ -413,4 +416,17 @@ std::string	Server::toUpperCase(std::string s) {
 		newStr += (char)toupper(s[i]);
 	}
 	return newStr;
+}
+
+void Server::removeClient(int fd) {
+	std::cout << "before" << std::endl;
+	for (int i = 0; i < channels.size(); i++) {
+		for (int j = 0; j < channels[i].clients.size(); j++) {
+			if (channels[i].clients[j].getFd() == fd) {
+				channels[i].clients.erase(channels[i].clients.begin() + j);
+				std::cout << "I was here\n" << std::endl;
+				break ;
+			}
+		}
+	}
 }
