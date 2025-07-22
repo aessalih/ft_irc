@@ -33,7 +33,7 @@ class Server {
 		std::vector<Client>	clients;
 		std::vector<struct pollfd> fds;
 		struct pollfd	server_sockfd;
-		char	buffer[1024];
+		char	buffer[512];
 		std::string	password;
 		std::vector<Channel> channels;
 		int	parse_port(char *port);

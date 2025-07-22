@@ -5,7 +5,7 @@
 Server::Server() {
 	this->opt = 1;
 	this->addrlen = sizeof(address);
-	memset(buffer, 0, 1024);
+	memset(buffer, 0, 512);
 	this->port = 8080;
 	if (this->port == -1)
 		exit (EXIT_FAILURE);
@@ -16,7 +16,7 @@ Server::Server(char **av) {
 	flag = 1;
 	this->opt = 1;
 	this->addrlen = sizeof(address);
-	memset(buffer, 0, 1024);
+	memset(buffer, 0, 512);
 	this->port = parse_port(av[1]);
 	if (this->port == -1)
 		exit (EXIT_FAILURE);
@@ -148,10 +148,10 @@ int	Server::handleNewClients()
 }
 
 void Server::handleClientMessage(size_t i) {
-	memset(buffer, 0, 1024);
+	memset(buffer, 0, 512);
 
 	int client_fd = fds[i].fd;
-	int bytes = recv(client_fd, buffer, 1024, 0);
+	int bytes = recv(client_fd, buffer, 512, 0);
 	if (bytes <= 0) {
 		std::cout << "\033[1;32mClient " << clients[i - 1].getNickname() << " disconnected\033[0m" << "\n";
 		close(client_fd);
@@ -160,12 +160,12 @@ void Server::handleClientMessage(size_t i) {
 		return ;
 	}
 	std::string checkBuffer = buffer;
-	if (checkBuffer.find("\n") == std::string::npos) {
+	if (checkBuffer.find("\r\n") == std::string::npos) {
 		clients[i - 1].buffer += checkBuffer;
 		return ;
 	}
 	clients[i - 1].buffer += checkBuffer;
-	if (clients[i - 1].buffer.size() > 1023) {
+	if (clients[i - 1].buffer.size() > 512) {
 		std::cout << "\033[1;31mBUFFER OVERFLOWS...TRY AGAIN \033[0m" << std::endl;
 		clients[i - 1].buffer = "";
 		return ;

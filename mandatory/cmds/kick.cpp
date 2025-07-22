@@ -97,5 +97,5 @@ void Server::sendKickMessage(Channel *channel, Client &kicker, Client &target, c
         send(channel_clients[j].getFd(), kick_msg.c_str(), kick_msg.length(), 0);
     }
     // std::cout << "[" << ", " << kick_msg.c_str() << ", "<< kick_msg.length() << "]" << std::endl;
-    send(target.getFd(), kick_msg.c_str(), kick_msg.length(), 0);
+    // send(target.getFd(), kick_msg.c_str(), kick_msg.length(), 0);
 }
