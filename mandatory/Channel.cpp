@@ -22,8 +22,7 @@ Channel::Channel(std::string name, std::string key) : name(name), key(key), topi
 
 Channel::Channel(const Channel &other) : name(other.name), key(other.key), topic(other.topic), 
 	mode(other.mode), current_clients(other.current_clients), max_client(other.max_client),
-	creator(other.creator), invite_only(other.invite_only), topic_restricted(other.topic_restricted),
-	channel_mode(other.channel_mode) {
+	creator(other.creator), channel_mode(other.channel_mode) {
 	clients = other.clients;
 	priveleged_client = other.priveleged_client;
 	topic_set_time = other.topic_set_time;

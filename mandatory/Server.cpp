@@ -77,13 +77,14 @@ int	Server::init() {
 void Server::close_fds() {
 	std::cout << std::endl;
 	std::cout << std::endl;
-	for (int i = 0; i < clients.size(); i++) {
+	for (size_t i = 0; i < clients.size(); i++) {
 		close(clients[i].getFd());
 	}
 	close(sockfd);
 }
 
 void Server::stopServer(int signalNum) {
+	(void) signalNum;
 	flag = 0;
 }
 
@@ -172,7 +173,7 @@ void Server::handleClientMessage(size_t i) {
 		clients[i - 1].buffer = "";
 		return ;
 	}
-	for (int j = 0; j < clients[i - 1].buffer.size(); j++) {
+	for (size_t j = 0; j < clients[i - 1].buffer.size(); j++) {
 		buffer[j] = clients[i - 1].buffer[j];
 	}
 	clients[i - 1].buffer = "";
@@ -191,7 +192,7 @@ void Server::handleClientMessage(size_t i) {
 		send(client_fd, msg.c_str(), msg.size(), 0);
 		return ;
 	}
-	for (int i = 0; i < clients.size(); i++) {
+	for (size_t i = 0; i < clients.size(); i++) {
 		std::cout << "client" << i << " = " << clients[i].getNickname() << std::endl;
 	}
 
@@ -412,19 +413,17 @@ std::vector<std::string> split(const std::string &s) {
 
 std::string	Server::toUpperCase(std::string s) {
 	std::string newStr = "";
-	for(int i = 0; i < s.size(); i++) {
+	for(size_t i = 0; i < s.size(); i++) {
 		newStr += (char)toupper(s[i]);
 	}
 	return newStr;
 }
 
 void Server::removeClient(int fd) {
-	std::cout << "before" << std::endl;
-	for (int i = 0; i < channels.size(); i++) {
-		for (int j = 0; j < channels[i].clients.size(); j++) {
+	for (size_t i = 0; i < channels.size(); i++) {
+		for (size_t j = 0; j < channels[i].clients.size(); j++) {
 			if (channels[i].clients[j].getFd() == fd) {
 				channels[i].clients.erase(channels[i].clients.begin() + j);
-				std::cout << "I was here\n" << std::endl;
 				break ;
 			}
 		}

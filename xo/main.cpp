@@ -293,22 +293,26 @@ int main(int ac, char **av) {
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(std::atoi(av[1]));
-    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.0");
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
 
     if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        close(sockfd);
         std::cerr << "Connection failed\n";
         return 1;
     }
-    char buffer[1024];
-    int bytes = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
-    if (bytes <= 0) {
-        std::cerr << "Connection closed or error\n";
-        return 1;
-    }
+    char buffer[512];
+    int bytes = 0;
+    // int bytes = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
+    // if (bytes <= 0) {
+    //     close(sockfd);
+    //     std::cerr << "Connection closed or error\n";
+    //     return 1;
+    // }
+    std::cout << "I was here" << std::endl;
 
-    std::string pass_cmd = "pass " + std::string(av[3]) + "\n";
-    std::string nick_cmd = "nick " + std::string(av[2]) + "\n";
-    std::string user_cmd = "user " + std::string(av[2]) + "\n";
+    std::string pass_cmd = "pass " + std::string(av[3]) + "\r\n";
+    std::string nick_cmd = "nick " + std::string(av[2]) + "\r\n";
+    std::string user_cmd = "user " + std::string(av[2]) + std::string(av[2]) + std::string(av[2]) + std::string(av[2])  + "\r\n";
 
     send(sockfd, pass_cmd.c_str(), pass_cmd.length(), 0);
     sleep(1);
@@ -318,7 +322,6 @@ int main(int ac, char **av) {
     
     send(sockfd, user_cmd.c_str(), user_cmd.length(), 0);
     sleep(1);
-
     while (true)
     {
         memset(buffer, 0, sizeof(buffer));

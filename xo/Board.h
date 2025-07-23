@@ -2,7 +2,7 @@
 #define BOARD_H
 
 #include <iostream>
-#include "../Server.hpp"
+#include "../mandatory/Server.hpp"
 class Board
 {
     private:

@@ -101,6 +101,7 @@ void Server::handleMode(size_t i, int client_fd, const std::vector<std::string> 
 
 void Server::handleModeInvite(Channel *channel, bool adding, int client_fd, const std::string &nickname, const std::string &channel_name) {
     // +i: set invite-only, -i: remove invite-only
+    (void) client_fd;
     if (adding) {
             channel->setInviteOnly(true);
             channel->setMode('i', 1);
@@ -184,6 +185,7 @@ void Server::handleModeLimit(Channel *channel, bool adding, const std::string &p
 
 void Server::handleModeTopic(Channel *channel, bool adding, int client_fd, const std::string &nickname, const std::string &channel_name) {
     // +t: set topic restriction, -t: remove topic restriction
+    (void) client_fd;
     if (adding) {
         
             channel->setTopicRestricted(true);

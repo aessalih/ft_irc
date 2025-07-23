@@ -62,7 +62,6 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string> 
             sendError(client_fd, 441, nickname, target_nick, "They aren't on that channel");
             continue;
         }
-        int target_fd = target_client->getFd();
         std::string target_username = target_client->getUsername();
         std::string target_ip = target_client->getIp();
         sendKickMessage(target_channel, client, *target_client, channel_name, target_nick);
@@ -90,6 +89,7 @@ bool Server::isUserOperatorOrCreator(Channel *channel, Client& client) {
 
 void Server::sendKickMessage(Channel *channel, Client &kicker, Client &target, const std::string &channel_name, const std::string &target_nick) {
     const std::vector<Client> &channel_clients = channel->get_clients();
+    (void) target;
     std::string kick_msg = ":" + kicker.getNickname() + "!" + kicker.getUsername() + "@" + kicker.getIp() + " KICK " +
                            channel_name + " " + target_nick + " :Yeet Out\r\n";
 
