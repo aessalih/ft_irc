@@ -12,6 +12,9 @@ Board::Board()
 
 Board::~Board()
 {
+    int i = 0;
+    while (i < 3)
+        delete[] content[i++];
     delete[] content;
 }
 
