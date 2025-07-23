@@ -128,7 +128,7 @@ std::string parse_sender(const std::string& message) {
     if (message.empty() || message[0] != ':')
         return "";
     
-    size_t space_pos = message.find(' ');
+    size_t space_pos = message.find('!');
     if (space_pos == std::string::npos)
         return "";
     
@@ -139,21 +139,28 @@ bool handle_message(int sockfd, const std::string& message) {
     std::string sender = parse_sender(message);
     if (sender.empty())
         return false;
-    std::cout << "Sender: " << sender << std::endl;
+    // std::cout << "Sender: " << sender << std::endl;
+    std::cout << "message: " << message << std::endl;
+
 
     if (message.find("PRIVMSG") != std::string::npos) {
         std::string content = parse_response(message);
-        content.erase(content.find_last_not_of(" \n\r\t") + 1);
-        content.erase(0, content.find_first_not_of(" \n\r\t"));
-                
+        content.erase(content.find_last_not_of(" \n\r") + 1);
+        content.erase(0, content.find_first_not_of(" "));
+        std::cout << "content: " << content << "|" << std::endl;
         if (content == "play") {
-            std::string response = "PRIVMSG " + sender + " :Starting a new game of Tic Tac Toe!\n";
-            send(sockfd, response.c_str(), response.length(), 0);
+            std::string response = "privmsg " + sender + " :Starting a new game of Tic Tac Toe!\r\n";
+            std::cout << response << "\n";
+            std::cout << sockfd << std::endl;
+            if (send(sockfd, response.c_str(), response.length(), 0) == -1)
+                std::cout << "failed\n";
+            else  
+                std::cout << "good\n";
             sleep(1);
             play(sockfd, sender);
             return true;
         } else {
-            std::string response = "PRIVMSG " + sender + " :To play Tic Tac Toe, send 'play'\n";
+            std::string response = "PRIVMSG " + sender + " :To play Tic Tac Toe, send 'play'\r\n";
             send(sockfd, response.c_str(), response.length(), 0);
         }
     }
@@ -173,7 +180,7 @@ int play(int fd, std::string current_player) {
 
     char buffer[1024];
 
-    std::string response = "PRIVMSG " + current_player + " Choose X or O: ";
+    std::string response = "PRIVMSG " + current_player + " :Choose X or O\r\n";
     send(fd, response.c_str(), response.length(), 0);
 
     while (true) {
@@ -187,7 +194,7 @@ int play(int fd, std::string current_player) {
         {
             break;
         }
-        response = "PRIVMSG " + current_player + " Invalid choice. Please choose X or O: ";
+        response = "PRIVMSG " + current_player + " :Invalid choice. Please choose X or O: \r\n";
         send(fd, response.c_str(), response.length(), 0);
     }
 
@@ -198,39 +205,40 @@ int play(int fd, std::string current_player) {
     std::vector<std::string> board_str = board.print_board();
     for(size_t i = 0; i < board_str.size(); i++)
     {
-    response = "PRIVMSG " + current_player + " " + board_str[i] + "\n";
+    response = "PRIVMSG " + current_player + " :" + board_str[i] + "\r\n";
     std::cout << board_str[i] + "/n";
     send(fd, response.c_str(), response.length(), 0);
     sleep(1);
     }
     char **content = board.getcontent();
     while (!winner) {
-        response = "PRIVMSG " + current_player + " choose where to put " + player + " (like this  row[separator]col): ";
+        response = "PRIVMSG " + current_player + " :choose where to put " + player + " (like this  row[separator]col): \r\n";
         send(fd, response.c_str(), response.length(), 0);
 
         while (true) {
             memset(buffer, 0, 1024);
             recv(fd, buffer, sizeof(buffer) - 1, 0);
             move = buffer;
-            move.erase(move.find_last_not_of(" \n\r\t") + 1);
-            move.erase(0, move.find_first_not_of(" \n\r\t"));
+            move.erase(move.find_last_not_of(" \n\r") + 1);
+            move.erase(0, move.find_first_not_of(" \n\r"));
             move = parse_response(move);
+            std::cout << move << std::endl;
             if (move.length() != 3)
             {
-            response = "PRIVMSG " + current_player + " wrong move format. Use row,col (like this 0,0)\n";
+            response = "PRIVMSG " + current_player + " :wrong move format. Use row,col (like this 0,0)\r\n";
             send(fd, response.c_str(), response.length(), 0);
             continue;
             }
             int row = char_digit(move[0]);
             int col = char_digit(move[2]);
             if (row < 0 || row > 2 || col < 0 || col > 2) {
-                response = "PRIVMSG " + current_player + " invalid position.use numbers 0-2\n";
+                response = "PRIVMSG " + current_player + " :invalid position.use numbers 0-2\r\n";
                 send(fd, response.c_str(), response.length(), 0);
                 continue;
             }
 
             if (board.set_move(row, col, player[0])) {
-                response = "PRIVMSG " + current_player + " position alreadytaken\n";
+                response = "PRIVMSG " + current_player + " :position alreadytaken\r\n";
                 send(fd, response.c_str(), response.length(), 0);
                 continue;
             }
@@ -241,20 +249,20 @@ int play(int fd, std::string current_player) {
     
          if (playerWon(content, player[0]))
          {
-                response = "PRIVMSG " + current_player + " You won! ------------\n";
+                response = "PRIVMSG " + current_player + " :You won! ------------\r\n";
                 send(fd, response.c_str(), response.length(), 0);
                 return 0;
         }
 
         int check = getBestMove(content, player[0], x_bot, y_bot);
         if (x_bot == -1) {
-            response = "PRIVMSG " + current_player + " It s a draw! ------------\n";
+            response = "PRIVMSG " + current_player + " :It s a draw! ------------\r\n";
             send(fd, response.c_str(), response.length(), 0);
             return 0;
         }
 
         if (board.set_move(x_bot, y_bot, bot)) {
-            response = "PRIVMSG " + current_player + " Error in bot move\n";
+            response = "PRIVMSG " + current_player + " :Error in bot move\r\n";
             send(fd, response.c_str(), response.length(), 0);
             continue;
         }
@@ -262,13 +270,13 @@ int play(int fd, std::string current_player) {
         board_str = board.print_board();
         for(size_t i = 0; i < board_str.size(); i++)
         {
-        response = "PRIVMSG " + current_player + " " + board_str[i] + "\n";
+        response = "PRIVMSG " + current_player + " :" + board_str[i] + "\r\n";
         std::cout << board_str[i] + "/n";
         send(fd, response.c_str(), response.length(), 0);
         sleep(1);
         }
         if (check == 1) {
-            response = "PRIVMSG " + current_player + " I won! ------------\n";
+            response = "PRIVMSG " + current_player + " :I won! ------------\r\n";
             send(fd, response.c_str(), response.length(), 0);
             return 0;
         }
@@ -302,17 +310,10 @@ int main(int ac, char **av) {
     }
     char buffer[512];
     int bytes = 0;
-    // int bytes = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
-    // if (bytes <= 0) {
-    //     close(sockfd);
-    //     std::cerr << "Connection closed or error\n";
-    //     return 1;
-    // }
-    std::cout << "I was here" << std::endl;
 
     std::string pass_cmd = "pass " + std::string(av[3]) + "\r\n";
     std::string nick_cmd = "nick " + std::string(av[2]) + "\r\n";
-    std::string user_cmd = "user " + std::string(av[2]) + std::string(av[2]) + std::string(av[2]) + std::string(av[2])  + "\r\n";
+    std::string user_cmd = "user " + std::string(av[2]) + " " + std::string(av[2]) + " " + std::string(av[2]) + " " +  std::string(av[2])  + "\r\n";
 
     send(sockfd, pass_cmd.c_str(), pass_cmd.length(), 0);
     sleep(1);

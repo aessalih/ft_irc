@@ -177,6 +177,7 @@ void Server::handleClientMessage(size_t i) {
 		buffer[j] = clients[i - 1].buffer[j];
 	}
 	clients[i - 1].buffer = "";
+	std::cout << buffer << std::endl;
 	if (clients[i - 1].getIsRegistered() == false) {
 		if (clients[i - 1].getHavePass() == false) {
 			if (check_password(buffer, client_fd)) {
