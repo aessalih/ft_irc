@@ -1,0 +1,14 @@
+➜  mandatory git:(master) ✗ nc -c localhost 1234
+pass 1234
+nick 
+:irc 433 nick :nickname is already in use
+nick
+:irc 431 nick :no nickname given
+nick 
+:irc 433 nick :nickname is already in use
+
+
+
+
+
+

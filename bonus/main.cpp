@@ -131,7 +131,7 @@ std::vector<std::string> split(const std::string& str) {
     }
     return tokens;
 }
-int play(int fd, std::string current_player);
+std::string play(int fd, std::string current_player);
 std::string parse_sender(const std::string& message) {
     if (message.empty() || message[0] != ':')
         return "";
@@ -147,25 +147,21 @@ bool handle_message(int sockfd, const std::string& message) {
     std::string sender = parse_sender(message);
     if (sender.empty())
         return false;
-    // std::cout << "Sender: " << sender << std::endl;
-    std::cout << "message: " << message << std::endl;
-
 
     if (message.find("PRIVMSG") != std::string::npos) {
         std::string content = parse_response(message);
         content.erase(content.find_last_not_of(" \n\r") + 1);
         content.erase(0, content.find_first_not_of(" "));
-        std::cout << "content: " << content << "|" << std::endl;
         if (content == "play") {
             std::string response = "privmsg " + sender + " :Starting a new game of Tic Tac Toe!\r\n";
-            std::cout << response << "\n";
-            std::cout << sockfd << std::endl;
             if (send(sockfd, response.c_str(), response.length(), 0) == -1)
-                std::cout << "failed\n";
+                std::cout << " " << response <<  " failed\n";
             else  
                 std::cout << "good\n";
             sleep(1);
-            play(sockfd, sender);
+            std::string msg = play(sockfd, sender);
+            if (msg != "")
+                handle_message(sockfd, msg);
             return true;
         } else {
             std::string response = "PRIVMSG " + sender + " :To play Tic Tac Toe, send 'play'\r\n";
@@ -175,7 +171,7 @@ bool handle_message(int sockfd, const std::string& message) {
     return false;
 }
 
-int play(int fd, std::string current_player) {
+std::string play(int fd, std::string current_player) {
     Board board;
     board.set_sock(fd);
     std::string player;
@@ -196,6 +192,10 @@ int play(int fd, std::string current_player) {
         memset(buffer, 0, 1024);
         recv(fd, buffer, sizeof(buffer) - 1, 0);
         player = buffer;
+        if (current_player != parse_sender(player))
+        {
+           continue;
+        }
         player = parse_response(player);
         player.erase(player.find_last_not_of(" \n\r\t") + 1);
         player.erase(0, player.find_first_not_of(" \n\r\t"));
@@ -215,7 +215,6 @@ int play(int fd, std::string current_player) {
     for(size_t i = 0; i < board_str.size(); i++)
     {
     response = "PRIVMSG " + current_player + " :" + board_str[i] + "\r\n";
-    std::cout << board_str[i] + "/n";
     send(fd, response.c_str(), response.length(), 0);
     sleep(1);
     }
@@ -228,10 +227,13 @@ int play(int fd, std::string current_player) {
             memset(buffer, 0, 1024);
             recv(fd, buffer, sizeof(buffer) - 1, 0);
             move = buffer;
+             if (current_player != parse_sender(move))
+            {
+               continue;
+            }
             move.erase(move.find_last_not_of(" \n\r") + 1);
             move.erase(0, move.find_first_not_of(" \n\r"));
             move = parse_response(move);
-            std::cout << move << std::endl;
             if (move.length() != 3)
             {
             response = "PRIVMSG " + current_player + " :wrong move format. Use row,col (like this 0,0)\r\n";
@@ -260,14 +262,14 @@ int play(int fd, std::string current_player) {
          {
                 response = "PRIVMSG " + current_player + " :You won! ------------\r\n";
                 send(fd, response.c_str(), response.length(), 0);
-                return 0;
+                return "";
         }
 
         int check = getBestMove(content, player[0], x_bot, y_bot);
         if (x_bot == -1) {
             response = "PRIVMSG " + current_player + " :It s a draw! ------------\r\n";
             send(fd, response.c_str(), response.length(), 0);
-            return 0;
+            return "";
         }
 
         if (board.set_move(x_bot, y_bot, bot)) {
@@ -280,17 +282,16 @@ int play(int fd, std::string current_player) {
         for(size_t i = 0; i < board_str.size(); i++)
         {
         response = "PRIVMSG " + current_player + " :" + board_str[i] + "\r\n";
-        std::cout << board_str[i] + "/n";
         send(fd, response.c_str(), response.length(), 0);
         sleep(1);
         }
         if (check == 1) {
             response = "PRIVMSG " + current_player + " :I won! ------------\r\n";
             send(fd, response.c_str(), response.length(), 0);
-            return 0;
+            return "";
         }
     }
-    return 0;
+    return "";
 }
 
 int main(int ac, char **av) {
