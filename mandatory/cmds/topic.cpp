@@ -9,7 +9,7 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
         return;
     }
 
-    const std::string &channel_name = tokens[1];
+    const std::string &channel_name = toLowerCase(tokens[1]);
     Channel *target_channel = findChannelByName(channel_name);
 
     if (!target_channel) {

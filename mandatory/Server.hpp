@@ -38,6 +38,7 @@ class Server {
 		std::vector<Channel> channels;
 		int	parse_port(char *port);
 
+		std::string toLowerCase(std::string s);
 		std::string	toUpperCase(std::string s);
 		//join
     	bool isValidChannelName(const std::string &name);

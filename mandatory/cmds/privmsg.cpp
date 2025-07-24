@@ -54,7 +54,10 @@ void Server::handlePrivmsg(size_t i, int client_fd, const std::vector<std::strin
         if (target.empty()) // skip empty entries
             continue;
         if (isChannelTarget(target)) {
-            handleChannelPrivmsg(target, message, client, client_fd);
+            std::string tar = target;
+            tar = toLowerCase(tar);
+            std::string &newtarget = tar;
+            handleChannelPrivmsg(newtarget, message, client, client_fd);
         } else {
             handleUserPrivmsg(target, message, client, client_fd);
         }
@@ -94,7 +97,6 @@ bool Server::isChannelTarget(const std::string &target) {
 
 void Server::handleChannelPrivmsg(const std::string &target, const std::string &msg, Client &sender, int client_fd) {
     Channel *target_channel = findChannelByName(target);
-
     if (!target_channel) {
         sendError(client_fd, 403, sender.getNickname(), target, "No such channel");
         return;

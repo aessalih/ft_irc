@@ -29,7 +29,7 @@ void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string
     }
 
     std::string target_nicks = tokens[1];
-    std::string channel_name = tokens[2];
+    std::string channel_name = toLowerCase(tokens[2]);
 
     if (!isValidKickChannelName(channel_name)) {
         sendError(client_fd, 403, nickname, channel_name, "No such channel");
