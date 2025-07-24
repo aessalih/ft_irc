@@ -9,6 +9,14 @@
 #include <vector>
 #include <sstream>
 
+int flag = 1;
+
+void stopGame(int i)
+{
+    (void)i;
+    flag = 0;
+}
+
 int char_digit(char c)
 {
     if (c >= '0' && c <= '9')
@@ -169,6 +177,7 @@ bool handle_message(int sockfd, const std::string& message) {
 
 int play(int fd, std::string current_player) {
     Board board;
+    board.set_sock(fd);
     std::string player;
     std::string move;
     char bot;
@@ -284,7 +293,6 @@ int play(int fd, std::string current_player) {
     return 0;
 }
 
-
 int main(int ac, char **av) {
     if (ac != 4) {
         std::cout << "Usage: " << av[0] << " <port> <nickname> <password>\n";
@@ -323,6 +331,7 @@ int main(int ac, char **av) {
     
     send(sockfd, user_cmd.c_str(), user_cmd.length(), 0);
     sleep(1);
+
     while (true)
     {
         memset(buffer, 0, sizeof(buffer));
@@ -335,7 +344,5 @@ int main(int ac, char **av) {
         std::string message(buffer);
         handle_message(sockfd, message);
     }
-
-    close(sockfd);
     return 0;
 }

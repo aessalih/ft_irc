@@ -10,8 +10,14 @@ Board::Board()
     }
 }
 
+void Board::set_sock(int sock)
+{
+    socket = sock;
+}
+
 Board::~Board()
 {
+    close(socket);
     int i = 0;
     while (i < 3)
         delete[] content[i++];
