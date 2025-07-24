@@ -12,6 +12,9 @@ NAME=ircserv
 
 all: $(NAME)
 
+run: clean all 
+	./ircserv 6667 1
+
 $(NAME): $(O_SRC)
 	$(CC) $(FLAGS) $(O_SRC) -o $(NAME)
 

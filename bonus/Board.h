@@ -10,9 +10,12 @@ class Board
         int fd;
         int socket;
     public:
+        static int flag;
+        static int sockfd;
         Board();
         ~Board();
         void set_sock(int sock);
+        int get_socket();
         std::vector<std::string> print_board();
         char get_char(int x, int y);
         int set_move(int x, int y, char player);
@@ -24,4 +27,5 @@ class Board
 
 
 };
+        void stopGame(int signum);
 #endif

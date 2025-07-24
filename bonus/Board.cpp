@@ -1,5 +1,8 @@
 #include "Board.h"
 
+int Board::flag = 1;
+int Board::sockfd = 0;
+
 Board::Board()
 {
     content = new char*[3];
@@ -8,6 +11,17 @@ Board::Board()
         for (int j = 0; j < 3; ++j)
             content[i][j] = ' ';
     }
+}
+
+void stopGame(int signum) {
+    (void) signum;
+    send(Board::sockfd, "kill me\r\n", 9, 0);
+    Board::flag = 0;
+}
+
+int Board::get_socket()
+{
+    return socket;
 }
 
 void Board::set_sock(int sock)

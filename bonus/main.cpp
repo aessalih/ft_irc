@@ -9,13 +9,13 @@
 #include <vector>
 #include <sstream>
 
-int flag = 1;
+// int flag = 1;
 
-void stopGame(int i)
-{
-    (void)i;
-    flag = 0;
-}
+// void stopGame(int i)
+// {
+//     (void)i;
+//     flag = 0;
+// }
 
 int char_digit(char c)
 {
@@ -188,7 +188,7 @@ std::string play(int fd, std::string current_player) {
     std::string response = "PRIVMSG " + current_player + " :Choose X or O\r\n";
     send(fd, response.c_str(), response.length(), 0);
 
-    while (true) {
+    while(Board::flag) {
         memset(buffer, 0, 1024);
         recv(fd, buffer, sizeof(buffer) - 1, 0);
         player = buffer;
@@ -223,7 +223,7 @@ std::string play(int fd, std::string current_player) {
         response = "PRIVMSG " + current_player + " :choose where to put " + player + " (like this  row[separator]col): \r\n";
         send(fd, response.c_str(), response.length(), 0);
 
-        while (true) {
+        while(Board::flag) {
             memset(buffer, 0, 1024);
             recv(fd, buffer, sizeof(buffer) - 1, 0);
             move = buffer;
@@ -300,8 +300,8 @@ int main(int ac, char **av) {
         return 1;
     }
 
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
+    Board::sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (Board::sockfd < 0) {
         std::cerr << "Error creating socket\n";
         return 1;
     }
@@ -312,8 +312,8 @@ int main(int ac, char **av) {
     serv_addr.sin_port = htons(std::atoi(av[1]));
     serv_addr.sin_addr.s_addr = INADDR_ANY;
 
-    if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-        close(sockfd);
+    if (connect(Board::sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        close(Board::sockfd);
         std::cerr << "Connection failed\n";
         return 1;
     }
@@ -324,26 +324,28 @@ int main(int ac, char **av) {
     std::string nick_cmd = "nick " + std::string(av[2]) + "\r\n";
     std::string user_cmd = "user " + std::string(av[2]) + " " + std::string(av[2]) + " " + std::string(av[2]) + " " +  std::string(av[2])  + "\r\n";
 
-    send(sockfd, pass_cmd.c_str(), pass_cmd.length(), 0);
+    send(Board::sockfd, pass_cmd.c_str(), pass_cmd.length(), 0);
     sleep(1);
     
-    send(sockfd, nick_cmd.c_str(), nick_cmd.length(), 0);
+    send(Board::sockfd, nick_cmd.c_str(), nick_cmd.length(), 0);
     sleep(1);
     
-    send(sockfd, user_cmd.c_str(), user_cmd.length(), 0);
+    send(Board::sockfd, user_cmd.c_str(), user_cmd.length(), 0);
     sleep(1);
-
-    while (true)
+    std::signal(SIGINT, stopGame);
+    std::signal(SIGTERM, stopGame);
+    while(Board::flag)
     {
         memset(buffer, 0, sizeof(buffer));
-        bytes = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
+        bytes = recv(Board::sockfd, buffer, sizeof(buffer) - 1, 0);
         if (bytes <= 0) {
             std::cerr << "Connection closed or error\n";
             break;
         }
 
         std::string message(buffer);
-        handle_message(sockfd, message);
+        handle_message(Board::sockfd, message);
     }
+    close(Board::sockfd);
     return 0;
 }

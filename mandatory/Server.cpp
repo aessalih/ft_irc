@@ -154,6 +154,7 @@ void Server::handleClientMessage(size_t i) {
 
 	int client_fd = fds[i].fd;
 	int bytes = recv(client_fd, buffer, 512, 0);
+	std::cout << buffer << std::endl;
 	if (bytes <= 0) {
 		std::cout << "\033[1;32mClient " << clients[i - 1].getNickname() << " disconnected\033[0m" << "\n";
 		removeClient(client_fd);
