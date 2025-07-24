@@ -70,7 +70,7 @@ class Server {
     	bool isUserInChannel(Channel *channel, Client &client);
     	Client *findClientInChannel(Channel *channel, const std::string &target_nick);
     	bool isUserOperatorOrCreator(Channel *channel, Client &client);
-    	void sendKickMessage(Channel *channel, Client &kicker, Client &target, const std::string &channel_name, const std::string &target_fd);
+    	void sendKickMessage(Channel *channel, Client &kicker, const std::string &channel_name, const std::string &target_nick, std::string msg);
 
 		//topic
 		Channel *findChannelByName(const std::string &name);

@@ -30,6 +30,11 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string> 
 
     std::string channel_name = toLowerCase(tokens[1]);
     std::string target_nicks = tokens[2];
+    std::string msg;
+    if (tokens.size() == 3)
+        msg = ":you are out";
+    else
+        msg = tokens[3];
 
     if (!isValidKickChannelName(channel_name)) {
         sendError(client_fd, 403, nickname, channel_name, "No such channel");
@@ -51,6 +56,9 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string> 
         sendError(client_fd, 482, nickname, "", "You're not channel a operator");
         return;
     }
+    if (nickname == target_nicks) {
+        return ;
+    }
 
     std::vector<std::string> users = splitByComma(target_nicks);
     for (size_t idx = 0; idx < users.size(); ++idx) {
@@ -64,7 +72,7 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string> 
         }
         std::string target_username = target_client->getUsername();
         std::string target_ip = target_client->getIp();
-        sendKickMessage(target_channel, client, *target_client, channel_name, target_nick);
+        sendKickMessage(target_channel, client, channel_name, target_nick, msg);
         target_channel->delete_client(*target_client);
     }
 }
@@ -87,11 +95,10 @@ bool Server::isUserOperatorOrCreator(Channel *channel, Client& client) {
     return (channel->getCreator() == client || channel->isOperator(client));
 }
 
-void Server::sendKickMessage(Channel *channel, Client &kicker, Client &target, const std::string &channel_name, const std::string &target_nick) {
+void Server::sendKickMessage(Channel *channel, Client &kicker, const std::string &channel_name, const std::string &target_nick, std::string msg) {
     const std::vector<Client> &channel_clients = channel->get_clients();
-    (void) target;
     std::string kick_msg = ":" + kicker.getNickname() + "!" + kicker.getUsername() + "@" + kicker.getIp() + " KICK " +
-                           channel_name + " " + target_nick + " :Yeet Out\r\n";
+                           channel_name + " " + target_nick + " "+ msg + "\r\n";
 
     for (size_t j = 0; j < channel_clients.size(); ++j) {
         send(channel_clients[j].getFd(), kick_msg.c_str(), kick_msg.length(), 0);
