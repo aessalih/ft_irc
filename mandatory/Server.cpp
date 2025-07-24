@@ -421,6 +421,14 @@ std::string	Server::toUpperCase(std::string s) {
 	return newStr;
 }
 
+std::string Server::toLowerCase(std::string s) {
+    std::string newStr = "";
+    for (size_t i = 0; i < s.size(); i++) {
+        newStr += (char)tolower(s[i]);
+    }
+    return newStr;
+}
+
 void Server::removeClient(int fd) {
 	for (size_t i = 0; i < channels.size(); i++) {
 		for (size_t j = 0; j < channels[i].clients.size(); j++) {

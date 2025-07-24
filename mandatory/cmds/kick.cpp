@@ -28,7 +28,7 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string> 
         return;
     }
 
-    std::string channel_name = tokens[1];
+    std::string channel_name = toLowerCase(tokens[1]);
     std::string target_nicks = tokens[2];
 
     if (!isValidKickChannelName(channel_name)) {

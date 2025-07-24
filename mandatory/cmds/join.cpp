@@ -38,7 +38,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string> 
         return;
     }
 
-    std::string channel_names = tokens[1];
+    std::string channel_names = toLowerCase(tokens[1]);
     std::string key = "";
     if (tokens.size() >= 3)
         key = tokens[2];
