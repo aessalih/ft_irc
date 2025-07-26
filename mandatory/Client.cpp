@@ -1,6 +1,5 @@
 #include "Client.hpp"
 
-
 Client::Client(int fd, const std::string& ip) : fd(fd), ip(ip), nickname(""), username(""), have_pass(false), isRegistered(false) {
 }
 

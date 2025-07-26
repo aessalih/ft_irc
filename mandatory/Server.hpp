@@ -60,8 +60,6 @@ class Server {
     	bool isChannelTarget(const std::string &target);
     	void handleChannelPrivmsg(const std::string &target, const std::string &msg, Client &sender, int client_fd);
     	void handleUserPrivmsg(const std::string &target, const std::string &msg, Client &sender, int client_fd);
-    	// Channel *findChannelByName(const std::string &name);
-    	// bool isUserInChannel(Channel *channel, Client &client);
     	void sendPrivmsgToChannel(Channel *channel, const std::string &msg, Client &sender);
     	void sendError(int client_fd, int code, const std::string &nickname, const std::string &target, const std::string &msg);
 
@@ -74,8 +72,6 @@ class Server {
 
 		//topic
 		Channel *findChannelByName(const std::string &name);
-    	// bool isUserInChannel(Channel &channel, Client &client);
-    	// void sendError(int client_fd, int code, const std::string &nickname, const std::string &channel, const std::string &message);
    		void sendCurrentTopic(int client_fd, Client &client, Channel &channel, const std::string &channel_name);
     	void setNewTopicAndNotify(Client &client, Channel &channel, const std::string &new_topic, const std::string &channel_name);
 

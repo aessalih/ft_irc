@@ -64,15 +64,12 @@ void Channel::set_mode(std::string new_mode) {
 }
 
 std::string Channel::get_mode() const {
-	// if mode string is empty, return empty string
 	if (mode.empty()) {
 		return "";
 	}
 
-	// Create a new string for ordered modes
 	std::string ordered_mode = "+";
 	
-	// Add modes in desired order
 	if (channel_mode.k == 1) ordered_mode += "k";
 	if (channel_mode.l == 1) ordered_mode += "l";
 	if (channel_mode.i == 1) ordered_mode += "i";
@@ -169,15 +166,11 @@ const Client &Channel::getCreator() const {
 
 void Channel::setCreator(const Client &client) {
 	creator = client;
-	// Set the creator as an operator
 	addOperator(client);
-	// Set the operator mode flag
 	channel_mode.o = 1;
-	// Set initial mode string with +o
 	mode = "+o";
 }
 
-// mode management methods
 void Channel::setMode(char mode, int value) {
 	switch (mode) {
 		case 'i':
@@ -199,30 +192,23 @@ void Channel::setMode(char mode, int value) {
 			break;
 	}
 	
-	// Initialize mode string if empty
 	if (this->mode.empty()) {
 		this->mode = "+";
 	}
 	
-	// Add or remove mode while maintaining order
 	if (value == 1) {
-		// Only add if not already present
 		if (this->mode.find(mode) == std::string::npos) {
-			// If this is the first mode, just add it
 			if (this->mode == "+") {
 				this->mode += mode;
 			} else {
-				// Otherwise, insert it at the end
 				this->mode.insert(this->mode.length(), 1, mode);
 			}
 		}
 	} else {
-		// Remove the mode if it exists
 		size_t pos = this->mode.find(mode);
 		if (pos != std::string::npos) {
 			this->mode.erase(pos, 1);
 		}
-		// If no modes left, clear the string
 		if (this->mode == "+") {
 			this->mode.clear();
 		}
@@ -241,12 +227,10 @@ int Channel::getMode(char mode) const {
 }
 
 void Channel::updateModeString() {
-	// Ensure mode string starts with +
 	if (!mode.empty() && mode[0] != '+') {
 		mode = "+" + mode;
 	}
 	
-	// If we have a creator and no operator mode, add it
 	if (creator.getNickname() != "" && mode.find("o") == std::string::npos) {
 		mode += "o";
 	}

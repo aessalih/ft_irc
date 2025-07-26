@@ -1,4 +1,4 @@
-#include "Board.h"
+#include "Board.hpp"
 
 int Board::flag = 1;
 int Board::sockfd = 0;
@@ -31,7 +31,6 @@ void Board::set_sock(int sock)
 
 Board::~Board()
 {
-    close(socket);
     int i = 0;
     while (i < 3)
         delete[] content[i++];

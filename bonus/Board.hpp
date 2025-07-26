@@ -1,8 +1,18 @@
-#ifndef BOARD_H
-#define BOARD_H
+#ifndef BOARD_HPP
+#define BOARD_HPP
 
 #include <iostream>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <string.h>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <sstream>
 #include "../mandatory/Server.hpp"
+
 class Board
 {
     private:
@@ -23,9 +33,9 @@ class Board
         void set_fd(int file_d);
         int get_fd();
         std::string get_board();
-
-
-
 };
-        void stopGame(int signum);
+
+void stopGame(int signum);
+std::vector<std::string> split_bonus(const std::string& str);
+
 #endif

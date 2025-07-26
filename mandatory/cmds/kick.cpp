@@ -1,7 +1,5 @@
 #include "../Server.hpp"
-#include <sstream>
 
-// Helper function to split a string by comma and return a vector of trimmed strings
 static std::vector<std::string> splitByComma(const std::string &input) {
     std::vector<std::string> result;
     std::stringstream ss(input);
@@ -40,7 +38,7 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string> 
         sendError(client_fd, 403, nickname, channel_name, "No such channel");
         return;
     }
-
+    channel_name[0] = '#';
     Channel *target_channel = findChannelByName(channel_name);
     if (!target_channel) {
         sendError(client_fd, 403, nickname, channel_name, "No such channel");
@@ -78,7 +76,7 @@ void Server::handleKick(size_t i, int client_fd, const std::vector<std::string> 
 }
 
 bool Server::isValidKickChannelName(const std::string &name) {
-    return (!name.empty() && name[0] == '#');
+    return (!name.empty() && (name[0] == '#' || name[0] == '&'));
 }
 
 
@@ -103,6 +101,4 @@ void Server::sendKickMessage(Channel *channel, Client &kicker, const std::string
     for (size_t j = 0; j < channel_clients.size(); ++j) {
         send(channel_clients[j].getFd(), kick_msg.c_str(), kick_msg.length(), 0);
     }
-    // std::cout << "[" << ", " << kick_msg.c_str() << ", "<< kick_msg.length() << "]" << std::endl;
-    // send(target.getFd(), kick_msg.c_str(), kick_msg.length(), 0);
 }

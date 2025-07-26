@@ -8,8 +8,9 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
         sendError(client_fd, 461, nickname, "", "Not enough parameters.");
         return;
     }
-
-    const std::string &channel_name = toLowerCase(tokens[1]);
+    std::string chan = tokens[1];
+    chan[0] = '#';
+    const std::string &channel_name = toLowerCase(chan);
     Channel *target_channel = findChannelByName(channel_name);
 
     if (!target_channel) {
@@ -27,7 +28,6 @@ void Server::handleTopic(size_t i, int client_fd, const std::vector<std::string>
         return;
     }
 
-    // only operator/creator can change topic if +t is set
     if (target_channel->isTopicRestricted() && !isUserOperatorOrCreator(target_channel, client)) {
         sendError(client_fd, 482, nickname, channel_name, "You're not a channel operator");
         return;

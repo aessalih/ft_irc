@@ -1,7 +1,5 @@
 #include "../Server.hpp"
-#include <sstream>
 
-// Helper function to split a string by comma and return a vector of trimmed strings
 static std::vector<std::string> splitByComma(const std::string &input) {
     std::vector<std::string> result;
     std::stringstream ss(input);
@@ -35,7 +33,7 @@ void Server::handleInvite(size_t i, int client_fd, const std::vector<std::string
         sendError(client_fd, 403, nickname, channel_name, "No such channel");
         return;
     }
-
+    channel_name[0] = '#';
     Channel *target_channel = findChannelByName(channel_name);
     if (!target_channel) {
         sendError(client_fd, 403, nickname, channel_name, "No such channel");

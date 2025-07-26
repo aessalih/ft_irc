@@ -1,23 +1,6 @@
-#include "Board.h"
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <string.h>
-#include <iostream>
-#include <string>
-#include <vector>
-#include <sstream>
+#include "Board.hpp"
 
-// int flag = 1;
-
-// void stopGame(int i)
-// {
-//     (void)i;
-//     flag = 0;
-// }
-
-int char_digit(char c)
+static int char_digit(char c)
 {
     if (c >= '0' && c <= '9')
         return (c - '0');
@@ -25,7 +8,7 @@ int char_digit(char c)
         return (-1);
 }
 
-int iswinningmove(char** board, char player, int row, int col) {
+static int iswinningmove(char** board, char player, int row, int col) {
     board[row][col] = player;
     int win =
         (board[row][0] == player && board[row][1] == player && board[row][2] == player) ||
@@ -36,7 +19,7 @@ int iswinningmove(char** board, char player, int row, int col) {
     return win;
 }
 
-int playerWon(char **content, char player)
+static int playerWon(char **content, char player)
 {
     for (int i = 0; i < 3; ++i)
         if (content[i][0] == player && content[i][1] == player && content[i][2] == player)
@@ -55,7 +38,7 @@ int playerWon(char **content, char player)
     return 0;
 }
 
-int getBestMove(char **content, char player, int& out_x, int& out_y) {
+static int getBestMove(char **content, char player, int& out_x, int& out_y) {
     char bot;
 
     if (player == 'X')
@@ -111,7 +94,7 @@ int getBestMove(char **content, char player, int& out_x, int& out_y) {
     return (0);
 }
 
-std::string parse_response(std::string input)
+static std::string parse_response(std::string input)
 {
     size_t last_colon = input.find_last_of(':');
     if (last_colon != std::string::npos) {
@@ -120,19 +103,9 @@ std::string parse_response(std::string input)
     return input;
 }
 
-std::vector<std::string> split(const std::string& str) {
-    std::vector<std::string> tokens;
-    std::stringstream ss(str);
-    std::string token;
-    while (std::getline(ss, token, ' ')) {
-        if (!token.empty()) {
-            tokens.push_back(token);
-        }
-    }
-    return tokens;
-}
 std::string play(int fd, std::string current_player);
-std::string parse_sender(const std::string& message) {
+
+static std::string parse_sender(const std::string& message) {
     if (message.empty() || message[0] != ':')
         return "";
     
@@ -143,7 +116,7 @@ std::string parse_sender(const std::string& message) {
     return message.substr(1, space_pos - 1);
 }
 
-bool handle_message(int sockfd, const std::string& message) {
+static bool handle_message(int sockfd, const std::string& message) {
     std::string sender = parse_sender(message);
     if (sender.empty())
         return false;
@@ -156,9 +129,7 @@ bool handle_message(int sockfd, const std::string& message) {
             std::string response = "privmsg " + sender + " :Starting a new game of Tic Tac Toe!\r\n";
             if (send(sockfd, response.c_str(), response.length(), 0) == -1)
                 std::cout << " " << response <<  " failed\n";
-            else  
-                std::cout << "good\n";
-            sleep(1);
+            usleep(1000);
             std::string msg = play(sockfd, sender);
             if (msg != "")
                 handle_message(sockfd, msg);
@@ -212,11 +183,11 @@ std::string play(int fd, std::string current_player) {
     else
         bot = 'X';
     std::vector<std::string> board_str = board.print_board();
-    for(size_t i = 0; i < board_str.size(); i++)
+    for(size_t i = 0; i < board_str.size() && Board::flag; i++)
     {
-    response = "PRIVMSG " + current_player + " :" + board_str[i] + "\r\n";
-    send(fd, response.c_str(), response.length(), 0);
-    sleep(1);
+        response = "PRIVMSG " + current_player + " :" + board_str[i] + "\r\n";
+        send(fd, response.c_str(), response.length(), 0);
+        usleep(1000);
     }
     char **content = board.getcontent();
     while (!winner) {
@@ -256,6 +227,8 @@ std::string play(int fd, std::string current_player) {
             else 
                 break ;
         }
+        if (!Board::flag)
+            break;
 
     
          if (playerWon(content, player[0]))
@@ -279,11 +252,11 @@ std::string play(int fd, std::string current_player) {
         }
         
         board_str = board.print_board();
-        for(size_t i = 0; i < board_str.size(); i++)
+        for(size_t i = 0; i < board_str.size() && Board::flag; i++)
         {
         response = "PRIVMSG " + current_player + " :" + board_str[i] + "\r\n";
         send(fd, response.c_str(), response.length(), 0);
-        sleep(1);
+        usleep(1000);
         }
         if (check == 1) {
             response = "PRIVMSG " + current_player + " :I won! ------------\r\n";
@@ -325,15 +298,17 @@ int main(int ac, char **av) {
     std::string user_cmd = "user " + std::string(av[2]) + " " + std::string(av[2]) + " " + std::string(av[2]) + " " +  std::string(av[2])  + "\r\n";
 
     send(Board::sockfd, pass_cmd.c_str(), pass_cmd.length(), 0);
-    sleep(1);
+    usleep(1000);
     
     send(Board::sockfd, nick_cmd.c_str(), nick_cmd.length(), 0);
-    sleep(1);
+    usleep(1000);
     
     send(Board::sockfd, user_cmd.c_str(), user_cmd.length(), 0);
-    sleep(1);
+    usleep(1000);
     std::signal(SIGINT, stopGame);
     std::signal(SIGTERM, stopGame);
+    std::signal(SIGPIPE, SIG_IGN);
+	std::signal(SIGQUIT, SIG_IGN);
     while(Board::flag)
     {
         memset(buffer, 0, sizeof(buffer));

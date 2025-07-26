@@ -1,7 +1,5 @@
 #include "../Server.hpp"
-#include <sstream>
 
-// Helper function to split a string by comma and return a vector of trimmed strings
 static std::vector<std::string> splitByComma(const std::string &input) {
     std::vector<std::string> result;
     std::stringstream ss(input);
@@ -20,12 +18,8 @@ static std::vector<std::string> splitByComma(const std::string &input) {
     return result;
 }
 
-// Helper function to validate comma-separated channel names
 static bool isValidCommaSeparatedChannels(const std::string &input) {
     if (input.empty()) return false;
-    // Allow any number of commas, including consecutive and trailing
-    // No need to check for consecutive commas
-    // No need to check for empty names after split; we'll skip them in handleJoin
     return true;
 }
 
@@ -57,6 +51,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string> 
                 sendError(client_fd, 403, nickname, channel_name, "No such channel");
                 continue;
             }
+            channel_name[0] = '#';
             Channel *target_channel = findOrCreateChannel(channel_name, key, client);
             if (!canClientJoinChannel(target_channel, client, channel_name, key, client_fd)) {
                 continue;
@@ -77,6 +72,7 @@ void Server::handleJoin(size_t i, int client_fd, const std::vector<std::string> 
             sendError(client_fd, 403, nickname, channel_name, "No such channel");
             return;
         }
+        channel_name[0] = '#';
         Channel *target_channel = findOrCreateChannel(channel_name, key, client);
         if (!canClientJoinChannel(target_channel, client, channel_name, key, client_fd)) {
             return;

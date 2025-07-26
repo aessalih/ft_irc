@@ -1,5 +1,4 @@
 #include "Server.hpp"
-#include <sstream>
 
 // canonical form and parameterize constructor definition
 Server::Server() {
@@ -54,13 +53,17 @@ int	Server::init() {
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons(this->port);
+	if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1) {
+		std::cerr << "FCNTL FUNCTION FAILS\n";
+		return -1;
+	}
 	if (bind(sockfd, (struct sockaddr*)&address, addrlen) == -1) {
 		std::cerr << ERROR << std::endl;
 		close(sockfd);
 		std::cerr << "\033[1;31mBIND FUNCTION FAILS\033[0m\n";
 		return -1;
 	}
-	if (listen(sockfd, 3) == -1) {
+	if (listen(sockfd, SOMAXCONN) == -1) {
 		std::cerr << ERROR << std::endl;
 		close(sockfd);
 		std::cerr << "\033[1;31mLISTEN FAILS\033[0m\n";
@@ -75,8 +78,6 @@ int	Server::init() {
 }
 
 void Server::close_fds() {
-	std::cout << std::endl;
-	std::cout << std::endl;
 	for (size_t i = 0; i < clients.size(); i++) {
 		close(clients[i].getFd());
 	}
@@ -154,7 +155,6 @@ void Server::handleClientMessage(size_t i) {
 
 	int client_fd = fds[i].fd;
 	int bytes = recv(client_fd, buffer, 512, 0);
-	std::cout << buffer << std::endl;
 	if (bytes <= 0) {
 		std::cout << "\033[1;32mClient " << clients[i - 1].getNickname() << " disconnected\033[0m" << "\n";
 		removeClient(client_fd);
@@ -178,7 +178,6 @@ void Server::handleClientMessage(size_t i) {
 		buffer[j] = clients[i - 1].buffer[j];
 	}
 	clients[i - 1].buffer = "";
-	std::cout << buffer << std::endl;
 	if (clients[i - 1].getIsRegistered() == false) {
 		if (clients[i - 1].getHavePass() == false) {
 			if (check_password(buffer, client_fd)) {
@@ -193,9 +192,6 @@ void Server::handleClientMessage(size_t i) {
 		std::string msg = ":irc 001 " + clients[i - 1].getNickname() + " :Welcome to IRC\r\n";
 		send(client_fd, msg.c_str(), msg.size(), 0);
 		return ;
-	}
-	for (size_t i = 0; i < clients.size(); i++) {
-		std::cout << "client" << i << " = " << clients[i].getNickname() << std::endl;
 	}
 
 	std::string msg(buffer);
@@ -226,7 +222,6 @@ void Server::handleClientMessage(size_t i) {
 		removeClient(client_fd);
 		close(client_fd);
 		fds.erase(fds.begin() + i);
-		// We have to delete the client from channels.
 		clients.erase(clients.begin() + i - 1);
 		return ;
 	}
@@ -235,7 +230,7 @@ void Server::handleClientMessage(size_t i) {
         send(client_fd, error_msg.c_str(), error_msg.length(), 0);
     }
 }
-// :PASS aksjdlq weiooiuda
+
 int	Server::check_password(char *buffer, int fd) {
 	char *pass = strtok(buffer, " ");
 	std::string	password = pass;
@@ -284,7 +279,8 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 		name = token;
 		name.erase(name.find_last_not_of("\r\n") + 1);
 		while (j < clients.size()) {
-			if (clients[j].getNickname() == name) {
+			if (clients[j].getNickname() == name && name != "") {
+				std::cout << "index" << j << " | [" << clients[j].getNickname() << "]" << std::endl;
 				response = ":irc 433 nick :nickname is already in use\r\n";
 				send(fd, response.c_str(), response.size(), 0);
 				return 0;
@@ -294,11 +290,10 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 		if (name.find_first_of(" #,*?!@") != std::string::npos) {
 			response = ":irc 432 * "+ name +" : :Erroneous nickname\r\n";
 			send(fd, response.c_str(), response.size(), 0);
-			////////////////////////////////////////////////////////////
 			return 0;
 		}
-		if (name.size() > 9) {
-			response = ":irc 432 * "+ name +" : :Too long nickname\r\n";
+		if (name.size() > 9 || name.size() == 0) {
+			response = ":irc 432 * "+ name +" : :Invalid nickname\r\n";
 			send(fd, response.c_str(), response.size(), 0);
 			return 0;
 		}
@@ -309,7 +304,7 @@ int	Server::check_names(std::vector<Client> &clients, size_t i, char *buffer, in
 	}
 	else if (name == "USER") {
 		std::vector<std::string> a = split1(newBuffer);
-		if (split1(newBuffer).size() != 5) {
+		if (a.size() != 5) {
 			response = ":irc 461 user : invalid username\r\n";
 			send(fd, response.c_str(), response.size(), 0);
 			return 0;
@@ -346,20 +341,18 @@ std::vector<std::string> split1(const std::string &s){
 	std::vector<std::string> tokens;
 	std::string token;
 	std::istringstream tokenStream(s);
-	bool inWord = false;
 	std::string currentWord;
 	int flag = 0;
 
 	for (size_t i = 0; i < s.length(); i++) {
 		if (flag == 0 && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n')) {
-			tokens.push_back(currentWord);
+			if (!currentWord.empty())
+				tokens.push_back(currentWord);
 			currentWord.clear();
-			inWord = false;
 		} else {
-			if (!inWord && s[i] == ':')
+			if (s[i] == ':')
 				flag = 1;
 			currentWord += s[i];
-			inWord = true;
 		}
 	}
 
@@ -370,41 +363,10 @@ std::vector<std::string> split1(const std::string &s){
 	return tokens;
 }
 
-
-// std::vector<std::string> split(const std::string &s) {
-//     std::vector<std::string> tokens;
-//     std::string currentWord;
-//     bool inWord = false;
-
-//     for (size_t i = 0; i < s.length(); ++i) {
-//         char c = s[i];
-//         if (c == ' ' || c == '\t' || c == '\n') {
-//             if (inWord) {  // End of a word
-//                 tokens.push_back(currentWord);
-//                 currentWord.clear();
-//                 inWord = false;
-//             }
-//         } else {
-//             currentWord += c;
-//             inWord = true;
-//         }
-//     }
-
-//     // Add the last word if it exists
-//     if (inWord) {
-//         tokens.push_back(currentWord);
-//     }
-
-//     return tokens;
-// }
-
-
 std::vector<std::string> split(const std::string &s) {
 	std::istringstream			stream(s);
 	std::vector<std::string>	tokens;
 	std::string					token;
-
-	// if ':'
 
 	while (stream >> token) {
 		tokens.push_back(token);

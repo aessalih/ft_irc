@@ -1,8 +1,5 @@
 #include "../Server.hpp"
-#include <fstream>
-#include <sstream>
 
-// Helper function to split a string by comma and return a vector of trimmed strings
 static std::vector<std::string> splitByComma(const std::string &input) {
     std::vector<std::string> result;
     std::stringstream ss(input);
@@ -114,8 +111,6 @@ void Server::handleUserPrivmsg(const std::string &target, const std::string &msg
     for (size_t j = 0; j < clients.size(); ++j) {
         if (clients[j].getNickname() == target) {
             std::string privmsg = ":" + sender.getNickname() + "!~" + sender.getUsername() + "@" + sender.getIp() +" PRIVMSG " + target + " :" + msg + "\r\n";
-
-    std::cout<< "MSG: "+privmsg << std::endl;
 
             send(clients[j].getFd(), privmsg.c_str(), privmsg.length(), 0);
             return;
